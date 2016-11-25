@@ -42,12 +42,12 @@ function enomPricingUpdater_config() {
       "profit" => array(
         "FriendlyName" => "Profit Margin",
         "Type" => "text",
-        "Description" => "Profit margin in percent (%) to increase wholesale price by. e.g:" . round(entering, 2) . " 50 sets the price for a domain to 150% of your cost."
+        "Description" => "Profit margin in percent (%) to increase wholesale price by. e.g: entering 50 sets the price for a domain to 150% of your cost."
       ),
       "multiDiscount" => array(
         "FriendlyName" => "Multi-year discount",
         "Type" => "text",
-        "Description" => "Percentage discount to apply for multi-year registrations and renewals. e.g:" . round(Entering, 2) . " 5 will decrease the profit margin by 5 percentage points for 2-year transers, 10 percentage points for 3-year transfers, etc."
+        "Description" => "Percentage discount to apply for multi-year registrations and renewals. e.g: entering 5 will decrease the profit margin by 5 percentage points for 2-year transers, 10 percentage points for 3-year transfers, etc."
       ),
       "cron" => array(
         "FriendlyName" => "Enable cron mode",
