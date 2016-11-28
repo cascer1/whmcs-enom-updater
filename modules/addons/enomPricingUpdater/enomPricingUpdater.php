@@ -76,8 +76,6 @@ function enomPricingUpdater_activate() {
       $table->decimal('salePrice', 5, 2)->nullable();
       $table->date('saleEnd')->nullable();
       $table->boolean('processed')->default(false);
-      $table->timestamp('created_at')->default(Capsule::raw('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'));
-      $table->timestamp('updated_at')->default(Capsule::raw('CURRENT_TIMESTAMP'));
     });
     return array('status'=>'success','description'=>'The module has been activated');
   } catch (Exception $e) {
