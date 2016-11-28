@@ -413,7 +413,18 @@ function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $
   );
 
   // How are different durations stored in the database?
-  $terms = array('', 'msetupfee', 'qsetupfee', 'ssetupfee');
+  $terms = array(
+    1 => 'msetupfee',
+    2 => 'qsetupfee',
+    3 => 'ssetupfee',
+    4 => 'asetupfee',
+    5 => 'bsetupfee',
+    6 => 'monthly',
+    7 => 'quarterly',
+    8 => 'semiannually',
+    9 => 'annually',
+    10 => 'biennially'
+  );
 
   // Loop through all domains in WHMCS
   foreach($domains as $domain) {
