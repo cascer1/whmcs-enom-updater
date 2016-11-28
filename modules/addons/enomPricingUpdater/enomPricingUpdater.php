@@ -426,6 +426,29 @@ function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $
 
   // Loop through all domains in WHMCS
   foreach($domains as $domain) {
+    // $enabledModes = array(
+    //   'domainregister' => array();
+    //   'domainrenew' => array();
+    //   'domaintransfer' => array(1);
+    // )
+
+    $currentRegistrationPrices = Capsule::table('tblpricing')
+    ->where('relid', $domain->id)
+    ->where('type', 'domainregister')
+    ->where('currency', 1)
+    ->select('msetupfee', 'qsetupfee', 'ssetupfee', 'asetupfee', 'bsetupfee', 'monthly', 'quarterly', 'semiannually', 'annually', 'biennially')
+    ->first();
+
+    $currentRenewalPrices = Capsule::table('tblpricing')
+    ->where('relid', $domain->id)
+    ->where('type', 'domainrenew')
+    ->where('currency', 1)
+    ->select('msetupfee', 'qsetupfee', 'ssetupfee', 'asetupfee', 'bsetupfee', 'monthly', 'quarterly', 'semiannually', 'annually', 'biennially')
+    ->first();
+
+    //TODO: Set enabled modes based on $currentRegistrationPrices and $currentRenewalPrices
+
+
     $enomPrices = array(
       'domainregister' => array(),
       'domainrenew' => array(),
