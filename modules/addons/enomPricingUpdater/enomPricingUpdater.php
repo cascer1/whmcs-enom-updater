@@ -119,6 +119,9 @@ function enomPricingUpdater_output($vars) {
         case 'checkSales':
         enomPricingUpdater_checkSales();
         break;
+        case 'checkUpdates':
+        enomPricingUpdater_checkUpdates();
+        break;
         default:
         break;
       }
@@ -144,26 +147,37 @@ function enomPricingUpdater_output($vars) {
     echo "<button type='submit' class='btn btn-success'>Update all TLDs</button> (This may take a while)";
     echo "</form>";
     echo "<hr>";
+
     echo "<form method='post'>";
     echo "<input type='hidden' name='enomAction' value='updateSales' />";
     echo "<button type='submit' class='btn btn-success'>Apply Sale prices</button>";
     echo "</form>";
     echo "<hr>";
+
     echo "<form method='post'>";
     echo "<input type='hidden' name='enomAction' value='updateSome' />";
     echo "<input type='text' name='tlds' placeholder='.com,.net,.info'/><br>";
     echo "<button type='submit' class='btn btn-info'>Update specific TLDs</button>";
     echo "</form>";
     echo "<hr>";
+
     echo "<form method='post'>";
     echo "<input type='hidden' name='enomAction' value='updateDomainList' />";
     echo "<button type='submit' class='btn btn-info'>Update internal domain list</button> <br>Run this when you add or remove TLDs that you sell.";
     echo "</form>";
     echo "<hr>";
+
     echo "<form method='post'>";
     echo "<input type='hidden' name='enomAction' value='checkSales' />";
     echo "<button type='submit' class='btn btn-info'>Remove expired sales</button>";
     echo "</form>";
+    echo "<hr>";
+
+    echo "<form method='post'>";
+    echo "<input type='hidden' name='enomAction' value='checkUpdates' />";
+    echo "<button type='submit' class='btn btn-info'>Check for updates</button>";
+    echo "</form>";
+
     echo "</div>"; // col
     echo "<div class='col-md-9 pull-md-right'>";
     echo "<h4>Promotions</h4>";
@@ -519,6 +533,33 @@ function enomPricingUpdater_checkSales($vars) {
 function enomPricingUpdater_hookProcessAll($vars) {
   enomPricingUpdater_process();
   logModuleCall('eNom pricing updater', 'Cron: hookProcessAll', '', '', '', '');
+}
+
+function enomPricingUpdater_checkUpdates() {
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_URL, 'https://api.github.com/repos/ducohosting/whmcs-enom-updater/releases/latest');
+  curl_setopt($ch, CURLOPT_USERAGENT,'WHMCS eNom pricing update module by Duco Hosting');
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER,true);
+  $response = json_decode(curl_exec($ch));
+  curl_close($ch);
+
+  $latestVersion = ltrim($response->tag_name, 'v');
+  $currentVersion = Capsule::table('tbladdonmodules')->where([['module', 'enomPricingUpdater'], ['setting', 'version']])->first()->value;
+
+  // first > last --> 1
+  // first = last --> 0
+  // first < last --> -1
+
+  $result = version_compare($currentVersion, $latestVersion);
+
+  if($result == -1) {
+    echo "<strong>Update available!</strong><br>";
+    echo "Installed version: <strong>$currentVersion</strong><br>";
+    echo "Latest version: <strong>$latestVersion</strong><br><br>";
+    echo "Download the latest version <a href='{$response->zipball_url}'>HERE</a>";
+  } else {
+    echo "<strong>You are running the latest version</strong><br>";
+  }
 }
 
 ?>
