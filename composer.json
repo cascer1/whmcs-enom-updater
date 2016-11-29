@@ -4,6 +4,9 @@
   "minimum-stability": "stable",
   "version": "1.1.0-beta1",
   "license": "GPL-3.0+",
+  "archive": {
+    "exclude": [".idea", "vendor", "*.json", "*.phar", "*.lock", ".git", ".gitignore", "*.zip"]
+  },
   "authors": [
     {
       "name": "Cas Eliëns",

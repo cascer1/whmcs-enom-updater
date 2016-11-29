@@ -695,7 +695,7 @@ function enomPricingUpdater_checkUpdates()
         echo "<strong>Update available!</strong><br>";
         echo "Installed version: <strong>$currentVersion</strong><br>";
         echo "Latest version: <strong>$latestVersion</strong><br><br>";
-        echo "Download the latest version <a href='{$response->zipball_url}'>HERE</a>";
+        echo "Download the latest version <a href='{$response->assets->browser_download_url}'>HERE</a>";
     } else {
         echo "<strong>You are running the latest version</strong><br>";
     }
