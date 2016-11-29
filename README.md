@@ -23,6 +23,8 @@ The automatic mode runs after every daily cron job, but before the database back
 * Supports all currencies defined in WHMCS
 * Automatically acquires current domain pricing from eNom
 * Supports registrations and renewals for up to 10 years
+* Automatically disables registration/renewal terms not supported by eNom (e.g: .CO domains can only be registered/renewed for up to 5 years at a time)
+* Supports domain promotions: You can enter a promo price and expiry and the module will make sure to set the correct pricing and restore pricing after expiry
 
 ## Compatibility
 This addon module has been tested on WHMCS version 7.1.1 using PHP 7. compatibility with other WHMCS or PHP versions is not guaranteed.
