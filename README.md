@@ -22,7 +22,7 @@ The automatic mode runs after every daily cron job, but before the database back
 * Can update all domains at once, or only specific domains
 * Supports all currencies defined in WHMCS
 * Automatically acquires current domain pricing from eNom
-* Supports registrations and renewals for up to three-year periods
+* Supports registrations and renewals for up to 10 years
 
 ## Compatibility
 This addon module has been tested on WHMCS version 7.1.1 using PHP 7. compatibility with other WHMCS or PHP versions is not guaranteed.
