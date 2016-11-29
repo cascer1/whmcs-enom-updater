@@ -21,7 +21,27 @@
 if (!defined("WHMCS"))
     die("This file cannot be accessed directly");
 
+
 use Illuminate\Database\Capsule\Manager as Capsule;
+
+$GLOBALS['enomTerms'] = array(
+  1 => 'msetupfee',
+  2 => 'qsetupfee',
+  3 => 'ssetupfee',
+  4 => 'asetupfee',
+  5 => 'bsetupfee',
+  6 => 'monthly',
+  7 => 'quarterly',
+  8 => 'semiannually',
+  9 => 'annually',
+  10 => 'biennially'
+);
+
+$GLOBALS['enomModes'] = array(
+  'domainregister' => 10,
+  'domainrenew' => 16,
+  'domaintransfer' => 19
+);
 
 function enomPricingUpdater_config() {
   $configarray = array(
@@ -51,6 +71,16 @@ function enomPricingUpdater_config() {
         "FriendlyName" => "Multi-year discount",
         "Type" => "text",
         "Description" => "Percentage discount to apply for multi-year registrations and renewals. e.g: entering 5 will decrease the profit margin by 5 percentage points for 2-year transers, 10 percentage points for 3-year transfers, etc."
+      ),
+      "rounding" => array(
+        "FriendlyName" => "Price rouding",
+        "Type" => "text",
+        "Description" => "Amount of cents to round sale prices to. e.g: entering 25 will results in prices like 7.00, 7.25, 7.50 or 7.75."
+      ),
+      "minPrice" => array(
+        "FriendlyName" => "Minimal price",
+        "Type" => "text",
+        "Description" => "The addon will never price domains lower than this amount, including domains that are on sale"
       ),
       "cron" => array(
         "FriendlyName" => "Enable cron mode",
@@ -302,6 +332,18 @@ function enomPricingUpdater_updateSales() {
   ->where([['module', 'enomPricingUpdater'],['setting', 'profit']])
   ->first()->value;
 
+  $minPrice = Capsule::table('tbladdonmodules')
+  ->where([['module', 'enomPricingUpdater'],['setting', 'minPrice']])
+  ->first()->value;
+
+  $rounding = 100/(Capsule::table('tbladdonmodules')
+  ->where([['module', 'enomPricingUpdater'],['setting', 'rounding']])
+  ->first()->value);
+
+  if(!isset($rounding) || $rounding < 0 || $rounding > 100 || !is_numeric($rounding)) $rounding = 4;
+  if(!isset($profit) || !is_numeric($profit)) $profit = 50;
+  if(!isset($minPrice) || $minPrice < 0 || !is_numeric($minPrice)) $minPrice = 0.01;
+
   $domains = Capsule::table('tbldomainpricing')->where('group', 'sale')->get();
 
   $dbrates = Capsule::table('tblcurrencies')->get();
@@ -319,7 +361,8 @@ function enomPricingUpdater_updateSales() {
     $salePrice = $saleFee * (1 + $profit/100);
 
     foreach($rates as $rate) {
-      $price = (floor($salePrice * $rate->rate * 10))/10;
+      $price = (floor($salePrice * $rate->rate * $rounding))/$rounding;
+      if($price < $minPrice) $price = $minPrice;
 
       // Update database, only execute if not running in testmode
       if(!$testmode) {
@@ -329,11 +372,34 @@ function enomPricingUpdater_updateSales() {
         ->where('currency', $rate->id)
         ->update(['msetupfee' => $price]);
       }
-
     }
-
   }
+}
 
+/**
+ * Convert a list of current prices to a list of enabled terms
+ * @param $currentPrices array(msetupfee,qsetupfee,ssetupfee...)
+ */
+function enomPricingUpdater_getEnabledTerms($currentPrices) {
+  $returned = array();
+
+  //TODO: Make this more flexible instead of hardcoding all terms
+  // foreach($GLOBALS['enomTerms'] as $year => $name) {
+  //   if($currentPrices->$name > 0) array_push($returned, $year);
+  // }
+
+  if($currentPrices->msetupfee > 0)    array_push($returned, 1);
+  if($currentPrices->qsetupfee > 0)    array_push($returned, 2);
+  if($currentPrices->ssetupfee > 0)    array_push($returned, 3);
+  if($currentPrices->asetupfee > 0)    array_push($returned, 4);
+  if($currentPrices->bsetupfee > 0)    array_push($returned, 5);
+  if($currentPrices->monthly > 0)      array_push($returned, 6);
+  if($currentPrices->quarterly > 0)    array_push($returned, 7);
+  if($currentPrices->semiannually > 0) array_push($returned, 8);
+  if($currentPrices->annually > 0)     array_push($returned, 9);
+  if($currentPrices->biennially > 0)   array_push($returned, 10);
+
+  return $returned;
 }
 
 /**
@@ -362,7 +428,17 @@ function enomPricingUpdater_process($extensions) {
   ->where([['module', 'enomPricingUpdater'],['setting', 'multiDiscount']])
   ->first()->value;
 
-  if(!isset($discount)) $discount = 0;
+  $minPrice = Capsule::table('tbladdonmodules')
+  ->where([['module', 'enomPricingUpdater'],['setting', 'minPrice']])
+  ->first()->value;
+
+  $rounding = 100/(Capsule::table('tbladdonmodules')
+  ->where([['module', 'enomPricingUpdater'],['setting', 'rounding']])
+  ->first()->value);
+
+  if(!isset($rounding) || $rounding < 0 || $rounding > 100 || !is_numeric($rounding)) $rounding = 4;
+  if(!isset($profit) || !is_numeric($profit)) $profit = 50;
+  if(!isset($minPrice) || $minPrice < 0 || !is_numeric($minPrice)) $minPrice = 0.01;
 
   // Get available domains from WHMCS
   $domains = Capsule::table('tbldomainpricing');
@@ -377,7 +453,7 @@ function enomPricingUpdater_process($extensions) {
     $rates[$rate->code] = $rate;
   }
 
-  enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $profit, $discount, $username, $apiKey);
+  enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $profit, $discount, $rounding, $username, $apiKey);
 
 }
 
@@ -391,62 +467,44 @@ function enomPricingUpdater_process($extensions) {
 * @param $username eNom API username
 * @param $apiKey eNom API access key
 */
-function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $profit, $discount, $username, $apiKey) {
+function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $profit, $discount, $rounding, $username, $apiKey) {
   $tlds = [];
 
   // PE_GetProductPrice <-- Just get the price
   // PE_GetResellerPrice <-- Get price and status
 
-  $enabledModes = array(
-    'domainregister' => array(1,2,3),
-    'domainrenew' => array(1,2,3),
-    'domaintransfer' => array(1)
-  );
-
-  // eNom api product types
-  $enomModes = array(
-    'domainregister' => 10,
-    'domainrenew' => 16,
-    'domaintransfer' => 19
-  );
-
-  // How are different durations stored in the database?
-  $terms = array(
-    1 => 'msetupfee',
-    2 => 'qsetupfee',
-    3 => 'ssetupfee',
-    4 => 'asetupfee',
-    5 => 'bsetupfee',
-    6 => 'monthly',
-    7 => 'quarterly',
-    8 => 'semiannually',
-    9 => 'annually',
-    10 => 'biennially'
-  );
-
   // Loop through all domains in WHMCS
   foreach($domains as $domain) {
-    // $enabledModes = array(
-    //   'domainregister' => array();
-    //   'domainrenew' => array();
-    //   'domaintransfer' => array(1);
-    // )
+    $enabledModes = array(
+      'domainregister' => array(),
+      'domainrenew' => array(),
+      'domaintransfer' => array()
+    );
 
     $currentRegistrationPrices = Capsule::table('tblpricing')
     ->where('relid', $domain->id)
-    ->where('type', 'domainregister')
     ->where('currency', 1)
+    ->where('type', 'domainregister')
     ->select('msetupfee', 'qsetupfee', 'ssetupfee', 'asetupfee', 'bsetupfee', 'monthly', 'quarterly', 'semiannually', 'annually', 'biennially')
     ->first();
 
     $currentRenewalPrices = Capsule::table('tblpricing')
     ->where('relid', $domain->id)
-    ->where('type', 'domainrenew')
     ->where('currency', 1)
+    ->where('type', 'domainrenew')
     ->select('msetupfee', 'qsetupfee', 'ssetupfee', 'asetupfee', 'bsetupfee', 'monthly', 'quarterly', 'semiannually', 'annually', 'biennially')
     ->first();
 
-    //TODO: Set enabled modes based on $currentRegistrationPrices and $currentRenewalPrices
+    $currentTransferPrices = Capsule::table('tblpricing')
+    ->where('relid', $domain->id)
+    ->where('currency', 1)
+    ->where('type', 'domaintransfer')
+    ->select('msetupfee', 'qsetupfee', 'ssetupfee', 'asetupfee', 'bsetupfee', 'monthly', 'quarterly', 'semiannually', 'annually', 'biennially')
+    ->first();
+
+    $enabledModes['domainregister'] = enomPricingUpdater_getEnabledTerms($currentRegistrationPrices);
+    $enabledModes['domainrenew'] = enomPricingUpdater_getEnabledTerms($currentRenewalPrices);
+    $enabledModes['domaintransfer'] = enomPricingUpdater_getEnabledTerms($currentTransferPrices);
 
 
     $enomPrices = array(
@@ -454,12 +512,13 @@ function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $
       'domainrenew' => array(),
       'domaintransfer' => array()
     );
+
     array_push($tlds, $domain->extension);
     $tld = ltrim($domain->extension, '.');
 
     foreach($enabledModes as $mode => $years) {
       foreach($years as $year) {
-        $enomPrices[$mode][$year] = getEnomPrice(array('tld' => $tld, 'type' => $enomModes[$mode], 'years' => $year), $rates, $username, $apiKey);
+        $enomPrices[$mode][$year] = getEnomPrice(array('tld' => $tld, 'type' => $GLOBALS['enomModes'][$mode], 'years' => $year), $rates, $username, $apiKey);
       }
     }
 
@@ -472,8 +531,8 @@ function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $
       foreach($newPrices as $type => $years) {
         $salePrices[$type] = array();
         foreach($years as $year => $price) {
-          $term = $terms[$year];
-          $salePrices[$type][$term] = (floor($price * $rate->rate * 10))/10;
+          $term = $GLOBALS['enomTerms'][$year];
+          $salePrices[$type][$term] = (floor($price * $rate->rate * $rounding))/$rounding;
         }
       }
 

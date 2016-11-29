@@ -23,9 +23,9 @@ if (!defined("WHMCS"))
 
 use Illuminate\Database\Capsule\Manager as Capsule;
 
-add_hook('DailyCronJob', 1, 'enomPricingUpdater_checkSales');
-add_hook('DailyCronJob', 2, 'enomPricingUpdater_hookProcessAll');
-add_hook('DailyCronJob', 3, 'enomPricingUpdater_updateSales');
+add_hook('DailyCronJob', 6, 'enomPricingUpdater_checkSales');
+add_hook('DailyCronJob', 7, 'enomPricingUpdater_hookProcessAll');
+add_hook('DailyCronJob', 8, 'enomPricingUpdater_updateSales');
 
 add_hook('DailyCronJob', 5, function($vars) {
   logModuleCall('eNom pricing updater', 'Cron ran', 'Hello, world!', '', '', '');
