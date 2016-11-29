@@ -21,14 +21,16 @@
 if (!defined("WHMCS"))
     die("This file cannot be accessed directly");
 
-use Illuminate\Database\Capsule\Manager as Capsule;
 
+/** @noinspection PhpUndefinedFunctionInspection */
 add_hook('DailyCronJob', 6, 'enomPricingUpdater_checkSales');
+/** @noinspection PhpUndefinedFunctionInspection */
 add_hook('DailyCronJob', 7, 'enomPricingUpdater_hookProcessAll');
+/** @noinspection PhpUndefinedFunctionInspection */
 add_hook('DailyCronJob', 8, 'enomPricingUpdater_updateSales');
 
-add_hook('DailyCronJob', 5, function($vars) {
-  logModuleCall('eNom pricing updater', 'Cron ran', 'Hello, world!', '', '', '');
+/** @noinspection PhpUndefinedFunctionInspection */
+add_hook('DailyCronJob', 5, function ($vars) {
+    /** @noinspection PhpUndefinedFunctionInspection */
+    logModuleCall('eNom pricing updater', 'Cron ran', 'Hello, world!', '', '', '');
 });
-
-?>

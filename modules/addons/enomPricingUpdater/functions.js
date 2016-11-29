@@ -1,15 +1,17 @@
+//noinspection JSUnusedGlobalSymbols
 function toggleDomainSale(tld) {
-  var enabled = $('#chkSaleEnabled' + tld).is(':checked');
+    var enabled = $('#chkSaleEnabled' + tld).is(':checked');
+    var datEndSale = $('#datSaleEnd' + tld);
+    var numSalePrice = $('#numSalePrice' + tld);
 
-  if(enabled === true) {
-    $('#datSaleEnd' + tld).show();
-    $('#numSalePrice' + tld).show();
-  } else {
-    var d = new Date();
-    $('#datSaleEnd' + tld).hide();
-    $('#numSalePrice' + tld).hide();
+    if (enabled === true) {
+        datEndSale.show();
+        numSalePrice.show();
+    } else {
+        datEndSale.hide();
+        numSalePrice.hide();
 
-    $('#datSaleEnd' + tld).val(null);
-    $('#numSalePrice' + tld).val(null);
-  }
+        datEndSale.val(null);
+        numSalePrice.val(null);
+    }
 }
