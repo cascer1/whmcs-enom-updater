@@ -1,0 +1,15 @@
+{
+  "name": "ducohosting/whmcs-enom-updater",
+  "description": "Update WHMCS domain prices based on eNom wholesale fees",
+  "minimum-stability": "dev",
+  "license": "GPL-3.0+",
+  "authors": [
+    {
+      "name": "Cas Eliëns",
+      "email": "cas@ducohosting.com"
+    }
+  ],
+  "require": {
+    "laravel/database": "4.2.0"
+  }
+}
