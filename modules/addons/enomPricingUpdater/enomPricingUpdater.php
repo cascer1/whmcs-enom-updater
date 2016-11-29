@@ -43,6 +43,19 @@ $GLOBALS['enomModes'] = [
     'domaintransfer' => 19
 ];
 
+$GLOBALS['numberNames'] = [
+    1 => 'one',
+    2 => 'two',
+    3 => 'three',
+    4 => 'four',
+    5 => 'five',
+    6 => 'six',
+    7 => 'seven',
+    8 => 'eight',
+    9 => 'nine',
+    10 => 'ten'
+];
+
 /**
  * @return array
  */
@@ -51,7 +64,7 @@ function enomPricingUpdater_config()
     $configarray = [
         "name" => "eNom domain pricing updater",
         "description" => "Automatically update domain pricing based on eNom pricing",
-        "version" => "1.1.0-beta1",
+        "version" => "1.1.0-beta2",
         "author" => "Duco Hosting",
         "fields" => [
             "username" => [
@@ -62,7 +75,7 @@ function enomPricingUpdater_config()
             ],
             "apikey" => [
                 "FriendlyName" => "API key",
-                "Type" => "text",
+                "Type" => "password",
                 "Size" => "50",
                 "Description" => "eNom API key. Get one <a href='https://www.enom.com/apitokens/'>here</a>"
             ],
@@ -91,6 +104,20 @@ function enomPricingUpdater_config()
                 "Type" => "yesno",
                 "Description" => "Automatically run for all extensions during the daily cron job"
             ],
+            "priceUpdateRate" => [
+                "FriendlyName" => "Update eNom prices",
+                "Type" => "dropdown",
+                "Options" => "Daily,Weekly,Monthly,Never",
+                "Description" => "When to automatically update eNom wholesale prices during cron job.",
+                "Default" => "Monthly"
+            ],
+            "priceUpdateDay" => [
+                "FriendlyName" => "eNom price update day",
+                "Type" => "dropdown",
+                "Options" => "Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday",
+                "Description" => "When Update eNom prices is set to weekly, the update will be performed on this weekday",
+                "Default" => "Sunday"
+            ],
             "testmode" => [
                 "FriendlyName" => "Test Mode",
                 "Type" => "yesno",
@@ -115,9 +142,26 @@ function enomPricingUpdater_activate()
             $table->date('saleEnd')->nullable();
             $table->boolean('processed')->default(false);
         });
+        Capsule::schema()->create('mod_enomupdater_prices', function ($table) {
+            // https://laravel.com/docs/4.2/schema
+            $table->string('extension')->references('extension')->on('tbldomainpricing')->onDelete('cascade');
+            $table->enum('type', array('domainregister', 'domainrenew', 'domaintransfer'));
+            $table->decimal('one', 5, 2)->nullable();
+            $table->decimal('two', 5, 2)->nullable();
+            $table->decimal('three', 5, 2)->nullable();
+            $table->decimal('four', 5, 2)->nullable();
+            $table->decimal('five', 5, 2)->nullable();
+            $table->decimal('six', 5, 2)->nullable();
+            $table->decimal('seven', 5, 2)->nullable();
+            $table->decimal('eight', 5, 2)->nullable();
+            $table->decimal('nine', 5, 2)->nullable();
+            $table->decimal('ten', 5, 2)->nullable();
+            $table->primary(array('extension', 'type'));
+        });
         return ['status' => 'success', 'description' => 'The module has been activated'];
     } catch (Exception $e) {
         Capsule::schema()->dropIfExists('mod_enomupdater_extensions');
+        Capsule::schema()->dropIfExists('mod_enomupdater_prices');
         return ['status' => 'error', 'description' => $e->getMessage()];
     }
 }
@@ -129,9 +173,35 @@ function enomPricingUpdater_deactivate()
 {
     try {
         Capsule::schema()->dropIfExists('mod_enomupdater_extensions');
+        Capsule::schema()->dropIfExists('mod_enomupdater_prices');
         return ['status' => 'success', 'description' => 'The module has been deactivated'];
     } catch (Exception $e) {
         return ['status' => 'error', 'description' => $e->getMessage()];
+    }
+}
+
+function enomPricingUpdater_upgrade($vars)
+{
+    $version = $vars['version'];
+
+    // Update to version 1.1.0-beta2, adding eNom wholesale prices to database
+    if (version_compare($version, '1.1.0-beta2') == -1) {
+        Capsule::schema()->create('mod_enomupdater_prices', function ($table) {
+            // https://laravel.com/docs/4.2/schema
+            $table->string('extension')->references('extension')->on('tbldomainpricing')->onDelete('cascade');
+            $table->enum('type', array('domainregister', 'domainrenew', 'domaintransfer'));
+            $table->decimal('one', 5, 2)->nullable();
+            $table->decimal('two', 5, 2)->nullable();
+            $table->decimal('three', 5, 2)->nullable();
+            $table->decimal('four', 5, 2)->nullable();
+            $table->decimal('five', 5, 2)->nullable();
+            $table->decimal('six', 5, 2)->nullable();
+            $table->decimal('seven', 5, 2)->nullable();
+            $table->decimal('eight', 5, 2)->nullable();
+            $table->decimal('nine', 5, 2)->nullable();
+            $table->decimal('ten', 5, 2)->nullable();
+            $table->primary(array('extension', 'type'));
+        });
     }
 }
 
@@ -166,6 +236,9 @@ function enomPricingUpdater_output($vars)
                 case 'checkUpdates':
                     enomPricingUpdater_checkUpdates();
                     break;
+                case 'fetchEnomPrices':
+                    enomPricingUpdater_fetchEnomPrices();
+                    break;
                 default:
                     break;
             }
@@ -187,15 +260,23 @@ function enomPricingUpdater_output($vars)
         echo "<div class='row'>";
         echo "<div class='col-md-3 pull-md-left'>";
         echo "<h4>Actions</h4>";
+
         echo "<form method='post'>";
-        echo "<input type='hidden' name='enomAction' value='updateAll' />";
-        echo "<button type='submit' class='btn btn-success'>Update all TLDs</button> (This may take a while)";
+        echo "<input type='hidden' name='enomAction' value='fetchEnomPrices' />";
+        echo "<button type='submit' class='btn btn-warning'>Fetch eNom prices</button> (This may take a while)";
         echo "</form>";
         echo "<hr>";
 
         echo "<form method='post'>";
-        echo "<input type='hidden' name='enomAction' value='updateSales' />";
-        echo "<button type='submit' class='btn btn-success'>Apply Sale prices</button>";
+        echo "<input type='hidden' name='enomAction' value='fetchEnomPrices' />";
+        echo "<input type='text' name='tlds' placeholder='.com,.net,.info'/><br>";
+        echo "<button type='submit' class='btn btn-info'>Fetch some eNom prices</button>";
+        echo "</form>";
+        echo "<hr>";
+
+        echo "<form method='post'>";
+        echo "<input type='hidden' name='enomAction' value='updateAll' />";
+        echo "<button type='submit' class='btn btn-success'>Update all TLDs</button>";
         echo "</form>";
         echo "<hr>";
 
@@ -207,14 +288,20 @@ function enomPricingUpdater_output($vars)
         echo "<hr>";
 
         echo "<form method='post'>";
-        echo "<input type='hidden' name='enomAction' value='updateDomainList' />";
-        echo "<button type='submit' class='btn btn-info'>Update internal domain list</button> <br>Run this when you add or remove TLDs that you sell.";
+        echo "<input type='hidden' name='enomAction' value='updateSales' />";
+        echo "<button type='submit' class='btn btn-success'>Apply Sale prices</button>";
         echo "</form>";
         echo "<hr>";
 
         echo "<form method='post'>";
         echo "<input type='hidden' name='enomAction' value='checkSales' />";
         echo "<button type='submit' class='btn btn-info'>Remove expired sales</button>";
+        echo "</form>";
+        echo "<hr>";
+
+        echo "<form method='post'>";
+        echo "<input type='hidden' name='enomAction' value='updateDomainList' />";
+        echo "<button type='submit' class='btn btn-info'>Update internal domain list</button> <br>Run this when you add or remove TLDs that you sell.";
         echo "</form>";
         echo "<hr>";
 
@@ -370,12 +457,7 @@ function enomPricingUpdater_updateSales()
 
     $domains = Capsule::table('tbldomainpricing')->where('group', 'sale')->get();
 
-    $dbrates = Capsule::table('tblcurrencies')->get();
-    $rates = [];
-
-    foreach ($dbrates as $rate) {
-        $rates[$rate->code] = $rate;
-    }
+    $rates = enomPricingUpdater_getRates();
 
     foreach ($domains as $domain) {
         // Get sale price in default currency
@@ -402,7 +484,7 @@ function enomPricingUpdater_updateSales()
 
 /**
  * Convert a list of current prices to a list of enabled terms
- * @param $currentPrices array(msetupfee,qsetupfee,ssetupfee...)
+ * @param $currentPrices object(msetupfee,qsetupfee,ssetupfee...)
  * @return array containing enabled terms for type, like $arr['domainregister'][1,2,3,4]
  */
 function enomPricingUpdater_getEnabledTerms($currentPrices)
@@ -426,6 +508,47 @@ function enomPricingUpdater_getEnabledTerms($currentPrices)
     if ($currentPrices->biennially > 0) array_push($returned, 10);
 
     return $returned;
+}
+
+/**
+ * Get a list of enabled purchase modes for a domain
+ * @param $domain Illuminate\Database\Query\Builder result of Capsule query for single domain
+ * @return array magic
+ */
+function enomPricingUpdater_getEnabledModes($domain)
+{
+    $enabledModes = [
+        'domainregister' => [],
+        'domainrenew' => [],
+        'domaintransfer' => []
+    ];
+
+    $currentRegistrationPrices = Capsule::table('tblpricing')
+        ->where('relid', $domain->id)
+        ->where('currency', 1)
+        ->where('type', 'domainregister')
+        ->select('msetupfee', 'qsetupfee', 'ssetupfee', 'asetupfee', 'bsetupfee', 'monthly', 'quarterly', 'semiannually', 'annually', 'biennially')
+        ->first();
+
+    $currentRenewalPrices = Capsule::table('tblpricing')
+        ->where('relid', $domain->id)
+        ->where('currency', 1)
+        ->where('type', 'domainrenew')
+        ->select('msetupfee', 'qsetupfee', 'ssetupfee', 'asetupfee', 'bsetupfee', 'monthly', 'quarterly', 'semiannually', 'annually', 'biennially')
+        ->first();
+
+    $currentTransferPrices = Capsule::table('tblpricing')
+        ->where('relid', $domain->id)
+        ->where('currency', 1)
+        ->where('type', 'domaintransfer')
+        ->select('msetupfee', 'qsetupfee', 'ssetupfee', 'asetupfee', 'bsetupfee', 'monthly', 'quarterly', 'semiannually', 'annually', 'biennially')
+        ->first();
+
+    $enabledModes['domainregister'] = enomPricingUpdater_getEnabledTerms($currentRegistrationPrices);
+    $enabledModes['domainrenew'] = enomPricingUpdater_getEnabledTerms($currentRenewalPrices);
+    $enabledModes['domaintransfer'] = enomPricingUpdater_getEnabledTerms($currentTransferPrices);
+
+    return $enabledModes;
 }
 
 /**
@@ -473,6 +596,19 @@ function enomPricingUpdater_process($extensions)
     if (isset($extensions)) $domains->whereIn('extension', $extensions);
     $domains = $domains->get();
 
+    $rates = enomPricingUpdater_getRates();
+
+    enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $profit, $minPrice, $discount, $rounding, $username, $apiKey);
+
+}
+
+/**
+ * Get an array of all exchange rates in the system
+ * Rates are relative to default currency
+ * @return array [code] => rate
+ */
+function enomPricingUpdater_getRates()
+{
     // Save exchange rates for easy access
     $dbrates = Capsule::table('tblcurrencies')->get();
     $rates = [];
@@ -481,8 +617,7 @@ function enomPricingUpdater_process($extensions)
         $rates[$rate->code] = $rate;
     }
 
-    enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $profit, $minPrice, $discount, $rounding, $username, $apiKey);
-
+    return $rates;
 }
 
 /**
@@ -506,36 +641,7 @@ function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $
 
     // Loop through all domains in WHMCS
     foreach ($domains as $domain) {
-        $enabledModes = [
-            'domainregister' => [],
-            'domainrenew' => [],
-            'domaintransfer' => []
-        ];
-
-        $currentRegistrationPrices = Capsule::table('tblpricing')
-            ->where('relid', $domain->id)
-            ->where('currency', 1)
-            ->where('type', 'domainregister')
-            ->select('msetupfee', 'qsetupfee', 'ssetupfee', 'asetupfee', 'bsetupfee', 'monthly', 'quarterly', 'semiannually', 'annually', 'biennially')
-            ->first();
-
-        $currentRenewalPrices = Capsule::table('tblpricing')
-            ->where('relid', $domain->id)
-            ->where('currency', 1)
-            ->where('type', 'domainrenew')
-            ->select('msetupfee', 'qsetupfee', 'ssetupfee', 'asetupfee', 'bsetupfee', 'monthly', 'quarterly', 'semiannually', 'annually', 'biennially')
-            ->first();
-
-        $currentTransferPrices = Capsule::table('tblpricing')
-            ->where('relid', $domain->id)
-            ->where('currency', 1)
-            ->where('type', 'domaintransfer')
-            ->select('msetupfee', 'qsetupfee', 'ssetupfee', 'asetupfee', 'bsetupfee', 'monthly', 'quarterly', 'semiannually', 'annually', 'biennially')
-            ->first();
-
-        $enabledModes['domainregister'] = enomPricingUpdater_getEnabledTerms($currentRegistrationPrices);
-        $enabledModes['domainrenew'] = enomPricingUpdater_getEnabledTerms($currentRenewalPrices);
-        $enabledModes['domaintransfer'] = enomPricingUpdater_getEnabledTerms($currentTransferPrices);
+        $enabledModes = enomPricingUpdater_getEnabledModes($domain);
 
 
         $enomPrices = [
@@ -545,11 +651,10 @@ function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $
         ];
 
         array_push($tlds, $domain->extension);
-        $tld = ltrim($domain->extension, '.');
 
         foreach ($enabledModes as $mode => $years) {
             foreach ($years as $year) {
-                $enomPrices[$mode][$year] = getEnomPrice(['tld' => $tld, 'type' => $GLOBALS['enomModes'][$mode], 'years' => $year], $rates, $username, $apiKey);
+                $enomPrices[$mode][$year] = enomPricingUpdater_getStoredPrice($domain->extension, $mode, $year);
             }
         }
 
@@ -563,6 +668,11 @@ function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $
                 $salePrices[$type] = [];
                 foreach ($years as $year => $price) {
                     $term = $GLOBALS['enomTerms'][$year];
+                    if($price == -1) {
+                        $salePrices[$type][$term] = -1;
+                        continue;
+                    }
+
                     $price = (floor($price * $rate->rate * $rounding)) / $rounding;
                     if ($price < $minPrice) $price = $minPrice;
                     $salePrices[$type][$term] = $price;
@@ -606,15 +716,18 @@ function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $
  *        ['domaintransfer'] => array ( 1 => 7.25)  // Wholesale price for domain transfers
  * @param $profit integer profit margin. 50 = 50%
  * @param $discount integer discount percentage per year for multi-year registrations
- * @return array() of $arr[type][years]. e.g: $arr['domainregister'][1] = 7.50
+ * @return array() of $arr[type][years]. e.g: $arr['domainregister'][1] = 7.50. Prices in default currency
  */
 function enomPricingUpdater_calculateSalePrices($enomPrices, $profit, $discount)
 {
+    $rates = enomPricingUpdater_getRates();
     $returned = [];
 
     foreach ($enomPrices as $type => $durations) {
         foreach ($durations as $duration => $price) {
             $returned[$type][$duration] = $price * (1 + $profit / 100 - $discount * ($duration - 1) / 100) * $duration;
+            $returned[$type][$duration] /= $rates['USD'];
+            if($price == -1 || $price == null) $returned[$type][$duration] = -1;
         }
     }
 
@@ -622,23 +735,122 @@ function enomPricingUpdater_calculateSalePrices($enomPrices, $profit, $discount)
 }
 
 /**
+ * Get the stored wholesale price for a domain/mode/year combo
+ * @param $extension string domain TLD
+ * @param $mode string ['domainregister', 'domainrenew', 'domaintransfer']
+ * @param $years integer between 1 and 10
+ * @return float wholesale price
+ */
+function enomPricingUpdater_getStoredPrice($extension, $mode, $years)
+{
+    $price = Capsule::table('mod_enomupdater_prices')
+        ->where('extension', $extension)
+        ->where('type', $mode)
+        ->pluck($GLOBALS['numberNames'][$years])[0];
+
+    return $price;
+}
+
+/**
+ * Update mod_enomupdater_prices table with current eNom wholesale prices
+ */
+function enomPricingUpdater_fetchEnomPrices()
+{
+    $parsed = [];
+
+    if (isset($_POST['tlds'])) {
+        $extensions = explode(',', $_POST['tlds']);
+        foreach ($extensions as $extension) {
+            $extension = trim($extension);
+            if (!enomPricingUpdater_startsWith($extension, '.')) {
+                $extension = '.' . $extension;
+            }
+            array_push($parsed, $extension);
+        }
+    }
+
+
+    $username = Capsule::table('tbladdonmodules')
+        ->where([['module', 'enomPricingUpdater'], ['setting', 'username']])
+        ->first()->value;
+
+    $apiKey = Capsule::table('tbladdonmodules')
+        ->where([['module', 'enomPricingUpdater'], ['setting', 'apikey']])
+        ->first()->value;
+
+    $domains = Capsule::table('tbldomainpricing');
+    if (count($parsed) > 0) $domains = $domains->whereIn('extension', $parsed);
+    $domains = $domains->get();
+
+
+    if (count($parsed) > 0) {
+        // Only clear pricing for domains we want to update
+        Capsule::table('mod_enomupdater_prices')->whereIn('extension', $parsed)->delete();
+    } else {
+        // Empty entire pricing database
+        Capsule::table('mod_enomupdater_prices')->truncate();
+    }
+
+    foreach ($domains as $domain) {
+        $enomPrices = [
+            'domainregister' => [],
+            'domainrenew' => [],
+            'domaintransfer' => []
+        ];
+
+        $tld = ltrim($domain->extension, '.');
+
+        foreach ($GLOBALS['enomModes'] as $mode => $foo) {
+            $generalInfo = enomPricingUpdater_getEnomPrice(['tld' => $tld, 'type' => $foo, 'years' => 1], $username, $apiKey, true);
+            $minPeriod = intval($generalInfo->MinPeriod);
+            $maxPeriod = intval($generalInfo->MaxPeriod);
+
+            if(!is_numeric($minPeriod) || $minPeriod < 1) $minPeriod = 1;
+            if(!is_numeric($maxPeriod) || $maxPeriod > 10) $maxPeriod = 10;
+
+            for ($i = $minPeriod; $i <= $maxPeriod; $i++) {
+                $result = enomPricingUpdater_getEnomPrice(['tld' => $tld, 'type' => $foo, 'years' => $i], $username, $apiKey, false);
+                $enomPrices[$mode][$i] = $result;
+            }
+        }
+
+        foreach ($enomPrices as $type => $years) {
+            Capsule::table('mod_enomupdater_prices')->insert([
+                'extension' => $domain->extension,
+                'type' => $type
+            ]);
+
+            foreach ($years as $year => $price) {
+                Capsule::table('mod_enomupdater_prices')
+                    ->where('extension', $domain->extension)
+                    ->where('type', $type)
+                    ->update([$GLOBALS['numberNames'][$year] => $price]);
+            }
+        }
+    }
+
+}
+
+/**
  * Get eNom price for certain product configuration
  * @param $settings array() containing product settings. ['tld', 'years', 'type']
- * @param $rates array() of exchange rates
  * @param $username string eNom API username
  * @param $apiKey string eNom API access key
- * @return float eNom price for specified purchase
+ * @param $getResult boolean return complete API response
+ * @return float|SimpleXMLElement eNom price for specified purchase
  */
-function getEnomPrice($settings, $rates, $username, $apiKey)
+function enomPricingUpdater_getEnomPrice($settings, $username, $apiKey, $getResult = false)
 {
     $endpoint = "https://reseller.enom.com/interface.asp";
     $urlBase = "$endpoint?uid=$username&pw=$apiKey&command=PE_GetProductPrice&ResponseType=xml";
 
-    // Registration endpoints
     $requestUrl = "$urlBase&tld={$settings['tld']}&ProductType={$settings['type']}&Years={$settings['years']}";
 
     $requestResult = simplexml_load_file($requestUrl);
-    return $requestResult->productprice->price / $rates['USD']->rate;
+
+    if (!$getResult) return $requestResult->productprice->price;
+
+    else return $requestResult;
 }
 
 /**
@@ -673,6 +885,11 @@ function enomPricingUpdater_hookProcessAll($vars)
     logModuleCall('eNom pricing updater', 'Cron: hookProcessAll', '', '', '', '');
 }
 
+/**
+ * Check to see if a new version is available on GitHub
+ * Only checks for stable releases.
+ * Displays a message with download link if new version is found
+ */
 function enomPricingUpdater_checkUpdates()
 {
     $ch = curl_init();
