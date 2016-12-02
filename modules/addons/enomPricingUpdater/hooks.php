@@ -28,14 +28,26 @@ add_hook('DailyCronJob', 5, function () {
 });
 
 add_hook('DailyCronJob', 6, function () {
+    if(function_exists("enomPricingUpdater_checkSales")) {
+        require_once(__DIR__ . '/enomPricingUpdater.php');
+    }
+
     enomPricingUpdater_checkSales();
 });
 
 add_hook('DailyCronJob', 7, function () {
+    if(function_exists("enomPricingUpdater_hookProcessAll")) {
+        require_once(__DIR__ . '/enomPricingUpdater.php');
+    }
+
     enomPricingUpdater_hookProcessAll();
 });
 
 add_hook('DailyCronJob', 8, function () {
+    if(function_exists("enomPricingUpdater_updateSales")) {
+        require_once(__DIR__ . '/enomPricingUpdater.php');
+    }
+
     enomPricingUpdater_updateSales();
 });
 
