@@ -8,8 +8,6 @@ The following is a set of guidelines for contributing to this module. These are 
 
 [What should I know before I get started?](#what-should-i-know-before-i-get-started)
   * [Code of Conduct](#code-of-conduct)
-  * [Atom and Packages](#atom-and-packages)
-  * [Atom Design Decisions](#design-decisions)
 
 [How Can I Contribute?](#how-can-i-contribute)
   * [Reporting Bugs](#reporting-bugs)
@@ -19,13 +17,8 @@ The following is a set of guidelines for contributing to this module. These are 
 
 [Styleguides](#styleguides)
   * [Git Commit Messages](#git-commit-messages)
-  * [JavaScript Styleguide](#javascript-styleguide)
-  * [CoffeeScript Styleguide](#coffeescript-styleguide)
-  * [Specs Styleguide](#specs-styleguide)
+  * [PHP Styleguide](#code-styleguide)
   * [Documentation Styleguide](#documentation-styleguide)
-
-[Additional Notes](#additional-notes)
-  * [Issue and Pull Request Labels](#issue-and-pull-request-labels)
 
 ## What should I know before I get started?
 
