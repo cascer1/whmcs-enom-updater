@@ -1,23 +1,24 @@
 <?php
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-// *                                                                               *
-// *                WHMCS eNom price sync addon module                             *
-// *                 Copyright (C) 2016  Duco Hosting                              *
-// *                                                                               *
-// *      This program is free software: you can redistribute it and/or modify     *
-// *      it under the terms of the GNU General Public License as published by     *
-// *      the Free Software Foundation, either version 3 of the License, or        *
-// *      (at your option) any later version.                                      *
-// *                                                                               *
-// *      This program is distributed in the hope that it will be useful,          *
-// *      but WITHOUT ANY WARRANTY; without even the implied warranty of           *
-// *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
-// *      GNU General Public License for more details.                             *
-// *                                                                               *
-// *      You should have received a copy of the GNU General Public License        *
-// *      along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
-// *                                                                               *
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+/**
+ *
+ *                  WHMCS eNom price sync addon module
+ *                   Copyright (C) 2016  Duco Hosting
+ *
+ *        This program is free software: you can redistribute it and/or modify
+ *        it under the terms of the GNU General Public License as published by
+ *        the Free Software Foundation, either version 3 of the License, or
+ *        (at your option) any later version.
+ *
+ *        This program is distributed in the hope that it will be useful,
+ *        but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *        GNU General Public License for more details.
+ *
+ *        You should have received a copy of the GNU General Public License
+ *        along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 if (!defined("WHMCS"))
     die("This file cannot be accessed directly");
 
@@ -180,16 +181,21 @@ function enomPricingUpdater_deactivate()
     }
 }
 
+/**
+ * Upgrade module to most recent version
+ * Executed whenever version stored in database is different than that defined in _config()
+ * @param $vars array containing ['version']. This is the previously installed version
+ */
 function enomPricingUpdater_upgrade($vars)
 {
     $version = $vars['version'];
 
     // Update to version 1.1.0-beta2, adding eNom wholesale prices to database
     if (version_compare($version, '1.1.0-beta2') == -1) {
-        Capsule::schema()->create('mod_enomupdater_prices', function ($table) {
+        Capsule::schema()->create('mod_enomupdater_prices', function (Illuminate\Database\Schema\Blueprint $table) {
             // https://laravel.com/docs/4.2/schema
             $table->string('extension')->references('extension')->on('tbldomainpricing')->onDelete('cascade');
-            $table->enum('type', array('domainregister', 'domainrenew', 'domaintransfer'));
+            $table->enum('type', ['domainregister', 'domainrenew', 'domaintransfer']);
             $table->decimal('one', 5, 2)->nullable();
             $table->decimal('two', 5, 2)->nullable();
             $table->decimal('three', 5, 2)->nullable();
@@ -200,7 +206,7 @@ function enomPricingUpdater_upgrade($vars)
             $table->decimal('eight', 5, 2)->nullable();
             $table->decimal('nine', 5, 2)->nullable();
             $table->decimal('ten', 5, 2)->nullable();
-            $table->primary(array('extension', 'type'));
+            $table->primary(['extension', 'type']);
         });
     }
 }
@@ -231,7 +237,7 @@ function enomPricingUpdater_output($vars)
                     enomPricingUpdater_updateSales();
                     break;
                 case 'checkSales':
-                    enomPricingUpdater_checkSales(null);
+                    enomPricingUpdater_checkSales();
                     break;
                 case 'checkUpdates':
                     enomPricingUpdater_checkUpdates();
@@ -668,7 +674,7 @@ function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $
                 $salePrices[$type] = [];
                 foreach ($years as $year => $price) {
                     $term = $GLOBALS['enomTerms'][$year];
-                    if($price == -1) {
+                    if ($price == -1) {
                         $salePrices[$type][$term] = -1;
                         continue;
                     }
@@ -727,7 +733,7 @@ function enomPricingUpdater_calculateSalePrices($enomPrices, $profit, $discount)
         foreach ($durations as $duration => $price) {
             $returned[$type][$duration] = $price * (1 + $profit / 100 - $discount * ($duration - 1) / 100) * $duration;
             $returned[$type][$duration] /= $rates['USD'];
-            if($price == -1 || $price == null) $returned[$type][$duration] = -1;
+            if ($price == -1 || $price == null) $returned[$type][$duration] = -1;
         }
     }
 
@@ -805,8 +811,8 @@ function enomPricingUpdater_fetchEnomPrices()
             $minPeriod = intval($generalInfo->MinPeriod);
             $maxPeriod = intval($generalInfo->MaxPeriod);
 
-            if(!is_numeric($minPeriod) || $minPeriod < 1) $minPeriod = 1;
-            if(!is_numeric($maxPeriod) || $maxPeriod > 10) $maxPeriod = 10;
+            if (!is_numeric($minPeriod) || $minPeriod < 1) $minPeriod = 1;
+            if (!is_numeric($maxPeriod) || $maxPeriod > 10) $maxPeriod = 10;
 
             for ($i = $minPeriod; $i <= $maxPeriod; $i++) {
                 $result = enomPricingUpdater_getEnomPrice(['tld' => $tld, 'type' => $foo, 'years' => $i], $username, $apiKey, false);
@@ -857,7 +863,7 @@ function enomPricingUpdater_getEnomPrice($settings, $username, $apiKey, $getResu
  * Checks sales for expiration dates and disables them once they expire
  * @param $vars
  */
-function enomPricingUpdater_checkSales($vars)
+function enomPricingUpdater_checkSales()
 {
     try {
         $expired = Capsule::table('mod_enomupdater_extensions')
@@ -878,7 +884,7 @@ function enomPricingUpdater_checkSales($vars)
 /**
  * @param $vars
  */
-function enomPricingUpdater_hookProcessAll($vars)
+function enomPricingUpdater_hookProcessAll()
 {
     enomPricingUpdater_process(null);
     /** @noinspection PhpUndefinedFunctionInspection */
