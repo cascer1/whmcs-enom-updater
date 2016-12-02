@@ -43,3 +43,4 @@ vendor/
 # *.ipr
 *.phar
 *.zip
+*.tar
