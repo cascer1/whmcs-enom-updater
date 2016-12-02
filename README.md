@@ -29,6 +29,9 @@ The automatic mode runs after every daily cron job, but before the database back
 ## Compatibility
 This addon module has been tested on WHMCS version 7.1.0 RC 1 using PHP 7. compatibility with other WHMCS or PHP versions is not guaranteed.
 
+## Contributing
+Please read [CONTRIBUTING.md](https://github.com/ducohosting/whmcs-enom-updater/blob/master/.github/CONTRIBUTING.md)
+
 ## License
 
 WHMCS eNom price sync addon module  
