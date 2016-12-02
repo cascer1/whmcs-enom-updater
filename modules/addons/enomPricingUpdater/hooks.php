@@ -22,29 +22,32 @@
 if (!defined("WHMCS"))
     die("This file cannot be accessed directly");
 
+//DailyCronJob
+
 // Debug hook
 add_hook('DailyCronJob', 5, function () {
     logModuleCall('eNom pricing updater', 'Cron ran', 'Hello, world!', '', '', '');
 });
 
 add_hook('DailyCronJob', 6, function () {
-    if(function_exists("enomPricingUpdater_checkSales")) {
+    if(!function_exists("enomPricingUpdater_checkSales")) {
         require_once(__DIR__ . '/enomPricingUpdater.php');
     }
 
     enomPricingUpdater_checkSales();
 });
 
+
 add_hook('DailyCronJob', 7, function () {
-    if(function_exists("enomPricingUpdater_hookProcessAll")) {
+    if(!function_exists("enomPricingUpdater_process")) {
         require_once(__DIR__ . '/enomPricingUpdater.php');
     }
 
-    enomPricingUpdater_hookProcessAll();
+    enomPricingUpdater_process(null);
 });
 
 add_hook('DailyCronJob', 8, function () {
-    if(function_exists("enomPricingUpdater_updateSales")) {
+    if(!function_exists("enomPricingUpdater_updateSales")) {
         require_once(__DIR__ . '/enomPricingUpdater.php');
     }
 

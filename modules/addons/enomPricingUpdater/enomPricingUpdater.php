@@ -122,7 +122,12 @@ function enomPricingUpdater_config()
             "testmode" => [
                 "FriendlyName" => "Test Mode",
                 "Type" => "yesno",
-                "Description" => "Enable test mode, makes module verbose and disables database saving"
+                "Description" => "Enable test mode, disables database saving"
+            ],
+            "debug" => [
+                "FriendlyName" => "Debug Mode",
+                "Type" => "yesno",
+                "Description" => "Enable debug mode, makes the module more verbose. Make sure to enable Module logging to view output."
             ]
         ]
     ];
@@ -250,8 +255,10 @@ function enomPricingUpdater_output($vars)
             }
         }
     } catch (Exception $ex) {
-        /** @noinspection PhpUndefinedFunctionInspection */
-        logModuleCall('eNom pricing updater', 'Action: ' . $_POST['enomAction'], json_encode(['vars' => $vars, 'post' => $_POST]), $ex->getMessage(), '', '');
+
+        $hiddenData = [substr($vars['apikey'], 10), substr($vars['username'], 5)];
+
+        logModuleCall('eNom pricing updater', 'Action: ' . $_POST['enomAction'], print_r(['vars' => $vars, 'post' => $_POST], true), $ex->getMessage(), '', $hiddenData);
         echo "<strong>Whoops!</strong><br><pre>{$ex->getMessage()}</pre>";
     }
 
@@ -445,6 +452,10 @@ function enomPricingUpdater_updateSales()
             ->where([['module', 'enomPricingUpdater'], ['setting', 'testmode']])
             ->first()->value == 'on');
 
+    $debug = (Capsule::table('tbladdonmodules')
+            ->where([['module', 'enomPricingUpdater'], ['setting', 'debug']])
+            ->first()->value == 'on');
+
     $profit = Capsule::table('tbladdonmodules')
         ->where([['module', 'enomPricingUpdater'], ['setting', 'profit']])
         ->first()->value;
@@ -563,8 +574,7 @@ function enomPricingUpdater_getEnabledModes($domain)
  */
 function enomPricingUpdater_process($extensions)
 {
-    /** @noinspection PhpUndefinedFunctionInspection */
-    logModuleCall('eNom pricing updater', 'process', json_encode($extensions), '', '', '');
+    logModuleCall('eNom pricing updater', 'process', print_r($extensions, true), '', '', '');
     $username = Capsule::table('tbladdonmodules')
         ->where([['module', 'enomPricingUpdater'], ['setting', 'username']])
         ->first()->value;
@@ -575,6 +585,10 @@ function enomPricingUpdater_process($extensions)
 
     $testmode = (Capsule::table('tbladdonmodules')
             ->where([['module', 'enomPricingUpdater'], ['setting', 'testmode']])
+            ->first()->value == 'on');
+
+    $debug = (Capsule::table('tbladdonmodules')
+            ->where([['module', 'enomPricingUpdater'], ['setting', 'debug']])
             ->first()->value == 'on');
 
     $profit = Capsule::table('tbladdonmodules')
@@ -604,7 +618,22 @@ function enomPricingUpdater_process($extensions)
 
     $rates = enomPricingUpdater_getRates();
 
-    enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $profit, $minPrice, $discount, $rounding, $username, $apiKey);
+    $logData = [
+        'domains' => $domains,
+        'rates' => $rates,
+        'testmode' => $testmode,
+        'minPrice' => $minPrice,
+        'discount' => $discount,
+        'rounding' => $rounding,
+        'username' => $username,
+        'apiKey' => $apiKey
+    ];
+
+    $hidden = [substr($username, 5), substr($apiKey, 10)];
+
+    logModuleCall('eNom Pricing Updater', 'process domains', print_r($logData, true), '', '', $hidden);
+
+    enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $debug, $profit, $minPrice, $discount, $rounding, $username, $apiKey);
 
 }
 
@@ -638,7 +667,7 @@ function enomPricingUpdater_getRates()
  * @param $username string eNom API username
  * @param $apiKey string eNom API access key
  */
-function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $profit, $minPrice, $discount, $rounding, $username, $apiKey)
+function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $debug, $profit, $minPrice, $discount, $rounding, $username, $apiKey)
 {
     $tlds = [];
 
@@ -685,31 +714,54 @@ function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $
                 }
             }
 
+
+            if($debug) {
+                $logData = [
+                    'domain' => $domain,
+                    'currency' => $rate,
+                    'newPrices' => $newPrices,
+                    'testmode' => $testmode,
+                    'minPrice' => $minPrice,
+                    'discount' => $discount,
+                    'rounding' => $rounding,
+                    'username' => $username,
+                    'apiKey' => $apiKey
+                ];
+
+                $hidden = [substr($username, 5), substr($apiKey, 10)];
+
+                logModuleCall('eNom pricing updater', "DEBUG: Update pricing for {$domain->extension} in {$rate->code}", print_r($logData, true), $salePrices, print_r($salePrices, true), $hidden);
+            }
+
             // Update database, only execute if not running in testmode
             if (!$testmode) {
-                Capsule::table('tblpricing')
-                    ->where('relid', $domain->id)
-                    ->where('type', 'domainregister')
-                    ->where('currency', $rate->id)
-                    ->update($salePrices['domainregister']);
+                if(isset($salePrices['domainregister'])) {
+                    Capsule::table('tblpricing')
+                        ->where('relid', $domain->id)
+                        ->where('type', 'domainregister')
+                        ->where('currency', $rate->id)
+                        ->update($salePrices['domainregister']);
+                }
 
-                Capsule::table('tblpricing')
-                    ->where('relid', $domain->id)
-                    ->where('type', 'domainrenew')
-                    ->where('currency', $rate->id)
-                    ->update($salePrices['domainrenew']);
+                if(isset($salePrices['domainrenew'])) {
+                    Capsule::table('tblpricing')
+                        ->where('relid', $domain->id)
+                        ->where('type', 'domainrenew')
+                        ->where('currency', $rate->id)
+                        ->update($salePrices['domainrenew']);
+                }
 
-                Capsule::table('tblpricing')
-                    ->where('relid', $domain->id)
-                    ->where('type', 'domaintransfer')
-                    ->where('currency', $rate->id)
-                    ->update($salePrices['domaintransfer']);
+                if(isset($salePrices['domaintransfer'])) {
+                    Capsule::table('tblpricing')
+                        ->where('relid', $domain->id)
+                        ->where('type', 'domaintransfer')
+                        ->where('currency', $rate->id)
+                        ->update($salePrices['domaintransfer']);
+                }
             }
 
         }
     }
-    echo "<br><strong>The following domain extensions have been updated</strong>:<br>" . implode(", ", $tlds);
-    echo "<hr>";
 }
 
 /**
@@ -861,7 +913,6 @@ function enomPricingUpdater_getEnomPrice($settings, $username, $apiKey, $getResu
 
 /**
  * Checks sales for expiration dates and disables them once they expire
- * @param $vars
  */
 function enomPricingUpdater_checkSales()
 {
@@ -873,22 +924,16 @@ function enomPricingUpdater_checkSales()
 
         Capsule::table('mod_enomupdater_extensions')->whereIn('extension', $expired)
             ->update(['salePrice' => null, 'saleEnd' => null, 'sale' => false]);
-        /** @noinspection PhpUndefinedFunctionInspection */
-        logModuleCall('eNom pricing updater', 'CheckSales', '', '', '', '');
+
+
+        $logData = [
+            'expired' => $expired
+        ];
+
+        logModuleCall('eNom pricing updater', 'CheckSales', print_r($logData, true), '', '', '');
     } catch (Exception $ex) {
-        /** @noinspection PhpUndefinedFunctionInspection */
         logModuleCall('eNom pricing updater', 'CheckSales Error', '', $ex->getMessage(), '', '');
     }
-}
-
-/**
- * @param $vars
- */
-function enomPricingUpdater_hookProcessAll()
-{
-    enomPricingUpdater_process(null);
-    /** @noinspection PhpUndefinedFunctionInspection */
-    logModuleCall('eNom pricing updater', 'Cron: hookProcessAll', '', '', '', '');
 }
 
 /**
@@ -907,6 +952,8 @@ function enomPricingUpdater_checkUpdates()
 
     $latestVersion = ltrim($response->tag_name, 'v');
     $currentVersion = Capsule::table('tbladdonmodules')->where([['module', 'enomPricingUpdater'], ['setting', 'version']])->first()->value;
+
+    logModuleCall('eNom pricing updater', 'Update check', $currentVersion, print_r($response, true), '', '');
 
     // first > last --> 1
     // first = last --> 0
