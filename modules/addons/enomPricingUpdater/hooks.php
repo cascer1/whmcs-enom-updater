@@ -23,19 +23,19 @@ if (!defined("WHMCS"))
     die("This file cannot be accessed directly");
 
 // Debug hook
-add_hook('DailyCronJob', 5, function ($vars) {
+add_hook('DailyCronJob', 5, function () {
     logModuleCall('eNom pricing updater', 'Cron ran', 'Hello, world!', '', '', '');
 });
 
-add_hook('DailyCronJob', 6, function ($vars) {
+add_hook('DailyCronJob', 6, function () {
     enomPricingUpdater_checkSales();
 });
 
-add_hook('DailyCronJob', 7, function ($vars) {
+add_hook('DailyCronJob', 7, function () {
     enomPricingUpdater_hookProcessAll();
 });
 
-add_hook('DailyCronJob', 8, function ($vars) {
+add_hook('DailyCronJob', 8, function () {
     enomPricingUpdater_updateSales();
 });
 
