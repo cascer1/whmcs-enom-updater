@@ -22,16 +22,20 @@
 function toggleDomainSale(tld) {
     var enabled = $('#chkSaleEnabled' + tld).is(':checked');
     var datEndSale = $('#datSaleEnd' + tld);
-    var numSalePrice = $('#numSalePrice' + tld);
+    var numRegPrice = $('#numRegPrice' + tld);
+    var numTraPrice = $('#numTraPrice' + tld);
 
     if (enabled === true) {
         datEndSale.show();
-        numSalePrice.show();
+        numRegPrice.show();
+        numTraPrice.show();
     } else {
         datEndSale.hide();
-        numSalePrice.hide();
+        numRegPrice.hide();
+        numTraPrice.hide();
 
         datEndSale.val(null);
-        numSalePrice.val(null);
+        numRegPrice.val(null);
+        numTraPrice.val(null);
     }
 }

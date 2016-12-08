@@ -65,7 +65,7 @@ function enomPricingUpdater_config()
     $configarray = [
         "name" => "eNom domain pricing updater",
         "description" => "Automatically update domain pricing based on eNom pricing",
-        "version" => "1.1.0-beta3",
+        "version" => "1.1.0-beta4",
         "author" => "Duco Hosting",
         "fields" => [
             "username" => [
@@ -140,34 +140,63 @@ function enomPricingUpdater_config()
 function enomPricingUpdater_activate()
 {
     try {
-        Capsule::schema()->create('mod_enomupdater_extensions', function ($table) {
+        // Store regular prices without sales
+        Capsule::schema()->create('mod_enomupdater_prices', function (Illuminate\Database\Schema\Blueprint $table) {
             // https://laravel.com/docs/4.2/schema
-            $table->string('extension')->references('extension')->on('tbldomainpricing')->onDelete('cascade')->unique();
-            $table->boolean('sale')->default(false);
-            $table->decimal('salePrice', 5, 2)->nullable();
-            $table->date('saleEnd')->nullable();
-            $table->boolean('processed')->default(false);
+            $table->integer('relid')->references('id')->on('tbldomainpricing')->onDelete('cascade')->unique();
+            $table->integer('currency')->references('id')->on('tblcurrencies')->onDelete('cascade');
+            $table->enum('type', ['domainregister', 'domainrenew', 'domaintransfer']);
+            $table->decimal('msetupfee', 10, 2)->nullable();
+            $table->decimal('qsetupfee', 10, 2)->nullable();
+            $table->decimal('ssetupfee', 10, 2)->nullable();
+            $table->decimal('asetupfee', 10, 2)->nullable();
+            $table->decimal('bsetupfee', 10, 2)->nullable();
+            $table->decimal('monthly', 10, 2)->nullable();
+            $table->decimal('quarterly', 10, 2)->nullable();
+            $table->decimal('semiannually', 10, 2)->nullable();
+            $table->decimal('annually', 10, 2)->nullable();
+            $table->decimal('biennially', 10, 2)->nullable();
         });
-        Capsule::schema()->create('mod_enomupdater_prices', function ($table) {
+
+        // Store eNom wholesale prices
+        Capsule::schema()->create('mod_enomupdater_enomprices', function (Illuminate\Database\Schema\Blueprint $table) {
             // https://laravel.com/docs/4.2/schema
             $table->string('extension')->references('extension')->on('tbldomainpricing')->onDelete('cascade');
-            $table->enum('type', array('domainregister', 'domainrenew', 'domaintransfer'));
-            $table->decimal('one', 5, 2)->nullable();
-            $table->decimal('two', 5, 2)->nullable();
-            $table->decimal('three', 5, 2)->nullable();
-            $table->decimal('four', 5, 2)->nullable();
-            $table->decimal('five', 5, 2)->nullable();
-            $table->decimal('six', 5, 2)->nullable();
-            $table->decimal('seven', 5, 2)->nullable();
-            $table->decimal('eight', 5, 2)->nullable();
-            $table->decimal('nine', 5, 2)->nullable();
-            $table->decimal('ten', 5, 2)->nullable();
-            $table->primary(array('extension', 'type'));
+            $table->enum('type', ['domainregister', 'domainrenew', 'domaintransfer']);
+            $table->decimal('one', 10, 2)->nullable();
+            $table->decimal('two', 10, 2)->nullable();
+            $table->decimal('three', 10, 2)->nullable();
+            $table->decimal('four', 10, 2)->nullable();
+            $table->decimal('five', 10, 2)->nullable();
+            $table->decimal('six', 10, 2)->nullable();
+            $table->decimal('seven', 10, 2)->nullable();
+            $table->decimal('eight', 10, 2)->nullable();
+            $table->decimal('nine', 10, 2)->nullable();
+            $table->decimal('ten', 10, 2)->nullable();
+            $table->primary(['extension', 'type']);
         });
+
+        Capsule::schema()->create('mod_enomupdater_sales', function (Illuminate\Database\Schema\Blueprint $table) {
+            $table->string('extension')->references('extension')->on('tbldomainpricing')->onDelete('cascade');
+            $table->enum('type', ['domainregister', 'domainrenew', 'domaintransfer']);
+            $table->smallInteger('years');
+            $table->decimal('price', 10, 2);
+            $table->date('expires');
+            $table->primary(['extension', 'type', 'years']);
+        });
+
+        Capsule::schema()->create('mod_enomupdater_extensions', function (Illuminate\Database\Schema\Blueprint $table) {
+            $table->string('extension')->references('extension')->on('tbldomainpricing')->onDelete('cascade');
+            $table->string('group')->default('none');
+            $table->primary(['extension']);
+        });
+
         return ['status' => 'success', 'description' => 'The module has been activated'];
     } catch (Exception $e) {
-        Capsule::schema()->dropIfExists('mod_enomupdater_extensions');
         Capsule::schema()->dropIfExists('mod_enomupdater_prices');
+        Capsule::schema()->dropIfExists('mod_enomupdater_enomprices');
+        Capsule::schema()->dropIfExists('mod_enomupdater_sales');
+        Capsule::schema()->dropIfExists('mod_enomupdater_extensions');
         return ['status' => 'error', 'description' => $e->getMessage()];
     }
 }
@@ -178,8 +207,10 @@ function enomPricingUpdater_activate()
 function enomPricingUpdater_deactivate()
 {
     try {
-        Capsule::schema()->dropIfExists('mod_enomupdater_extensions');
         Capsule::schema()->dropIfExists('mod_enomupdater_prices');
+        Capsule::schema()->dropIfExists('mod_enomupdater_enomprices');
+        Capsule::schema()->dropIfExists('mod_enomupdater_sales');
+        Capsule::schema()->dropIfExists('mod_enomupdater_extensions');
         return ['status' => 'success', 'description' => 'The module has been deactivated'];
     } catch (Exception $e) {
         return ['status' => 'error', 'description' => $e->getMessage()];
@@ -197,21 +228,51 @@ function enomPricingUpdater_upgrade($vars)
 
     // Update to version 1.1.0-beta2, adding eNom wholesale prices to database
     if (version_compare($version, '1.1.0-beta2') == -1) {
+        Capsule::schema()->create('mod_enomupdater_enomprices', function (Illuminate\Database\Schema\Blueprint $table) {
+            // https://laravel.com/docs/4.2/schema
+            $table->renameColumn('salePrice', 'regPrice');
+            $table->dropColumn('processed');
+            $table->decimal('traPrice', 5, 2)->nullable();
+        });
+    }
+
+    // Add support for transfer sales
+    if (version_compare($version, '1.1.0-beta4') == -1) {
+        Capsule::schema()->rename('mod_enomupdater_prices', 'mod_enomupdater_enomprices');
+
+        Capsule::schema()->table('mod_enomupdater_extensions', function (Illuminate\Database\Schema\Blueprint $table) {
+            $table->dropColumn('sale');
+            $table->dropColumn('salePrice');
+            $table->dropColumn('saleEnd');
+            $table->dropColumn('processed');
+            $table->string('group')->default('none');
+            $table->primary(['extension']);
+        });
+
         Capsule::schema()->create('mod_enomupdater_prices', function (Illuminate\Database\Schema\Blueprint $table) {
             // https://laravel.com/docs/4.2/schema
+            $table->integer('relid')->references('id')->on('tbldomainpricing')->onDelete('cascade')->unique();
+            $table->integer('currency')->references('id')->on('tblcurrencies')->onDelete('cascade');
+            $table->enum('type', ['domainregister', 'domainrenew', 'domaintransfer']);
+            $table->decimal('msetupfee', 10, 2)->nullable();
+            $table->decimal('qsetupfee', 10, 2)->nullable();
+            $table->decimal('ssetupfee', 10, 2)->nullable();
+            $table->decimal('asetupfee', 10, 2)->nullable();
+            $table->decimal('bsetupfee', 10, 2)->nullable();
+            $table->decimal('monthly', 10, 2)->nullable();
+            $table->decimal('quarterly', 10, 2)->nullable();
+            $table->decimal('semiannually', 10, 2)->nullable();
+            $table->decimal('annually', 10, 2)->nullable();
+            $table->decimal('biennially', 10, 2)->nullable();
+        });
+
+        Capsule::schema()->create('mod_enomupdater_sales', function (Illuminate\Database\Schema\Blueprint $table) {
             $table->string('extension')->references('extension')->on('tbldomainpricing')->onDelete('cascade');
             $table->enum('type', ['domainregister', 'domainrenew', 'domaintransfer']);
-            $table->decimal('one', 5, 2)->nullable();
-            $table->decimal('two', 5, 2)->nullable();
-            $table->decimal('three', 5, 2)->nullable();
-            $table->decimal('four', 5, 2)->nullable();
-            $table->decimal('five', 5, 2)->nullable();
-            $table->decimal('six', 5, 2)->nullable();
-            $table->decimal('seven', 5, 2)->nullable();
-            $table->decimal('eight', 5, 2)->nullable();
-            $table->decimal('nine', 5, 2)->nullable();
-            $table->decimal('ten', 5, 2)->nullable();
-            $table->primary(['extension', 'type']);
+            $table->smallInteger('years');
+            $table->decimal('price', 10, 2);
+            $table->date('expires');
+            $table->primary(['extension', 'type', 'years']);
         });
     }
 }
@@ -226,20 +287,20 @@ function enomPricingUpdater_output($vars)
             switch ($_POST['enomAction']) {
                 case 'updateAll':
                     enomPricingUpdater_process(null);
-                    enomPricingUpdater_updateSales();
+                    enomPricingUpdater_applySales();
                     break;
                 case 'updateSome':
                     enomPricingUpdater_processSome($_POST['tlds']);
-                    enomPricingUpdater_updateSales();
+                    enomPricingUpdater_applySales();
                     break;
                 case 'updateDomainList':
                     enomPricingUpdater_updateDomainList();
                     break;
-                case 'setPromos':
-                    enomPricingUpdater_setPromos($_POST);
+                case 'setPromo':
+                    enomPricingUpdater_setPromo($_POST);
                     break;
                 case 'updateSales':
-                    enomPricingUpdater_updateSales();
+                    enomPricingUpdater_applySales();
                     break;
                 case 'checkSales':
                     enomPricingUpdater_checkSales();
@@ -263,6 +324,17 @@ function enomPricingUpdater_output($vars)
     }
 
     try {
+        /* TODO: Update this to show a promo creation form and table of existing promos
+         *
+         * Form should contain fields:
+         * numSalePrice - decimal number input (2 decimals)
+         * numSaleYears - number input [1 .. 10]
+         * datSaleEnd - date input
+         * radSaleType - radio buttons ['domainregister', 'domainrenew', 'domaintransfer']
+         * selSaleDomain - dropdown domain selection
+         *
+         * Get current sales form mod_enomupdater_sales
+         */
         // Get list of configured domains
         $domains = Capsule::table('mod_enomupdater_extensions')->get();
         $addon_dir = substr(__DIR__, strlen($_SERVER['DOCUMENT_ROOT']));
@@ -328,9 +400,10 @@ function enomPricingUpdater_output($vars)
         echo "<h4>Promotions</h4>";
         echo "<div class='table-container clearfix'>";
         echo "<form method='post'>";
-        echo "<input type='hidden' name='enomAction' value='setPromos' />";
+        echo "<input type='hidden' name='enomAction' value='setPromo' />";
+        echo "<h2>Create Sale</h2>";
         echo "<table class='table table-list'>";
-        echo "<thead><tr><th>Extension</th><th>Sale</th><th>Sale Price (&dollar; USD)</th><th>Sale End</th></tr></thead>";
+        echo "<thead><tr><th>Extension</th><th>Sale</th><th>Registration Price (&dollar; USD)</th><th>Transfer Price (&dollar; USD)</th><th>Sale End</th></tr></thead>";
         echo "<tbody>";
         foreach ($domains as $domain) {
             $tld = ltrim($domain->extension, '.');
@@ -341,8 +414,13 @@ function enomPricingUpdater_output($vars)
             if ($domain->sale == 1) echo "checked='checked'";
             echo "></td>";
 
-            echo "<td id='tdSalePrice$tld'>
-      <input type='number' min='0.00' step='0.01' id='numSalePrice$tld' name='numSalePrice$tld' value='{$domain->salePrice}'";
+            echo "<td id='tdRegPrice$tld'>
+      <input type='number' min='0.00' step='0.01' id='numRegPrice$tld' name='numRegPrice$tld' value='{$domain->salePrice}'";
+            if ($domain->sale != 1) echo "style='display: none'";
+            echo "></td>";
+
+            echo "<td id='tdTraPrice$tld'>
+      <input type='number' min='0.00' step='0.01' id='numTraPrice$tld' name='numTraPrice$tld' value='{$domain->salePrice}'";
             if ($domain->sale != 1) echo "style='display: none'";
             echo "></td>";
 
@@ -366,29 +444,46 @@ function enomPricingUpdater_output($vars)
 }
 
 /**
- *  Change promo settings for domains
- * Domains that are currently on sale will not have their prices overwritten with eNom prices.
- * @param $post
+ * Create a new sale entry
+ * @param $post array containing ['selSaleDomain', 'radSaleType', 'numSaleYears', 'numSalePrice', 'datSaleEnd']
  */
-function enomPricingUpdater_setPromos($post)
+function enomPricingUpdater_setPromo($post)
 {
-    $domains = Capsule::table('mod_enomupdater_extensions')->lists('extension');
+    $tld = $post['selSaleDomain'];
+    $tldjs = ltrim($tld, '.');
+    $domainCount = Capsule::table('mod_enomupdater_extensions')->where('extension', $tld)->count();
 
-    foreach ($domains as $domain) {
-        $updated = Capsule::table('mod_enomupdater_extensions')->where('extension', $domain);
-        $updated_whmcs = Capsule::table('tbldomainpricing')->where('extension', $domain);
+    $whmcsDomain = Capsule::table('tbldomainpricing')->where('extension', $tld);
 
-        $tld = ltrim($domain, '.');
-        $sale = isset($post['chkSaleEnabled' . $tld]);
-        if ($sale) {
-            $salePrice = $post['numSalePrice' . $tld];
-            $saleEnd = $post['datSaleEnd' . $tld];
-            $updated->update(['sale' => true, 'salePrice' => $salePrice, 'saleEnd' => $saleEnd]);
-            $updated_whmcs->update(['group' => 'sale']);
+    if ($domainCount == 1) {
+        $type = $post['radSaleType' . $tldjs];
+        $years = $post['numSaleYears' . $tldjs];
+        $price = $post['numSalePrice' . $tldjs];
+        $end = $post['datSaleEnd' . $tldjs];
+
+        $existingSale = Capsule::table('mod_enomupdater_sales')
+            ->where('extension', $tld)
+            ->where('type', $type)
+            ->where('years', $years)
+            ->count();
+
+        if ($existingSale == 1) {
+            // Update existing sale
+            Capsule::table('mod_enomupdater_sales')
+                ->where('extension', $tld)
+                ->where('type', $type)
+                ->where('years', $years)
+                ->update(['expires' => $end, 'price' => $price]);
         } else {
-            $updated->update(['sale' => false, 'salePrice' => null, 'saleEnd' => null]);
-            $updated_whmcs->update(['group' => 'none']);
+            Capsule::table('mod_enomupdater_sales')->insert([
+                'extension' => $tld,
+                'type' => $type,
+                'years' => $years,
+                'expires' => $end,
+                'price' => $price
+            ]);
         }
+        $whmcsDomain->update(['group' => 'sale']);
     }
 }
 
@@ -430,11 +525,11 @@ function enomPricingUpdater_updateDomainList()
 {
     // Add new domains from WHMCS to module table
     $existing = Capsule::table('mod_enomupdater_extensions')->lists('extension');
-    $extensions = Capsule::table('tbldomainpricing')->whereNotIn('extension', $existing)->lists('extension');
+    $extensions = Capsule::table('tbldomainpricing')->whereNotIn('extension', $existing)->get();
 
     foreach ($extensions as $ext) {
         Capsule::table('mod_enomupdater_extensions')->insert(
-            ['extension' => $ext, 'sale' => false]
+            ['extension' => $ext->extension, 'group' => $ext->group]
         );
     }
 
@@ -446,7 +541,7 @@ function enomPricingUpdater_updateDomainList()
 /**
  * Update prices for domains on sale
  */
-function enomPricingUpdater_updateSales()
+function enomPricingUpdater_applySales()
 {
     $testmode = (Capsule::table('tbladdonmodules')
             ->where([['module', 'enomPricingUpdater'], ['setting', 'testmode']])
@@ -660,6 +755,7 @@ function enomPricingUpdater_getRates()
  * @param $domains array() of TLDs to update
  * @param $rates array() of exchange rates
  * @param $testmode boolean testmode is enabled
+ * @param $debug boolean enable debug mode
  * @param $profit integer profit margin. 50 = 50%
  * @param $minPrice
  * @param $discount integer discount percentage per year for multi-year registrations and renewals
@@ -715,7 +811,7 @@ function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $
             }
 
 
-            if($debug) {
+            if ($debug) {
                 $logData = [
                     'domain' => $domain,
                     'currency' => $rate,
@@ -735,24 +831,42 @@ function enomPricingUpdater_processRegularDomains($domains, $rates, $testmode, $
 
             // Update database, only execute if not running in testmode
             if (!$testmode) {
-                if(isset($salePrices['domainregister'])) {
+                if (isset($salePrices['domainregister'])) {
                     Capsule::table('tblpricing')
+                        ->where('relid', $domain->id)
+                        ->where('type', 'domainregister')
+                        ->where('currency', $rate->id)
+                        ->update($salePrices['domainregister']);
+
+                    Capsule::table('mod_enomupdater_prices')
                         ->where('relid', $domain->id)
                         ->where('type', 'domainregister')
                         ->where('currency', $rate->id)
                         ->update($salePrices['domainregister']);
                 }
 
-                if(isset($salePrices['domainrenew'])) {
+                if (isset($salePrices['domainrenew'])) {
                     Capsule::table('tblpricing')
+                        ->where('relid', $domain->id)
+                        ->where('type', 'domainrenew')
+                        ->where('currency', $rate->id)
+                        ->update($salePrices['domainrenew']);
+
+                    Capsule::table('mod_enomupdater_prices')
                         ->where('relid', $domain->id)
                         ->where('type', 'domainrenew')
                         ->where('currency', $rate->id)
                         ->update($salePrices['domainrenew']);
                 }
 
-                if(isset($salePrices['domaintransfer'])) {
+                if (isset($salePrices['domaintransfer'])) {
                     Capsule::table('tblpricing')
+                        ->where('relid', $domain->id)
+                        ->where('type', 'domaintransfer')
+                        ->where('currency', $rate->id)
+                        ->update($salePrices['domaintransfer']);
+
+                    Capsule::table('mod_enomupdater_prices')
                         ->where('relid', $domain->id)
                         ->where('type', 'domaintransfer')
                         ->where('currency', $rate->id)
@@ -801,7 +915,7 @@ function enomPricingUpdater_calculateSalePrices($enomPrices, $profit, $discount)
  */
 function enomPricingUpdater_getStoredPrice($extension, $mode, $years)
 {
-    $price = Capsule::table('mod_enomupdater_prices')
+    $price = Capsule::table('mod_enomupdater_enomprices')
         ->where('extension', $extension)
         ->where('type', $mode)
         ->pluck($GLOBALS['numberNames'][$years])[0];
@@ -810,7 +924,7 @@ function enomPricingUpdater_getStoredPrice($extension, $mode, $years)
 }
 
 /**
- * Update mod_enomupdater_prices table with current eNom wholesale prices
+ * Update mod_enomupdater_enomprices table with current eNom wholesale prices
  */
 function enomPricingUpdater_fetchEnomPrices()
 {
@@ -843,10 +957,10 @@ function enomPricingUpdater_fetchEnomPrices()
 
     if (count($parsed) > 0) {
         // Only clear pricing for domains we want to update
-        Capsule::table('mod_enomupdater_prices')->whereIn('extension', $parsed)->delete();
+        Capsule::table('mod_enomupdater_enomprices')->whereIn('extension', $parsed)->delete();
     } else {
         // Empty entire pricing database
-        Capsule::table('mod_enomupdater_prices')->truncate();
+        Capsule::table('mod_enomupdater_enomprices')->truncate();
     }
 
     foreach ($domains as $domain) {
@@ -873,13 +987,13 @@ function enomPricingUpdater_fetchEnomPrices()
         }
 
         foreach ($enomPrices as $type => $years) {
-            Capsule::table('mod_enomupdater_prices')->insert([
+            Capsule::table('mod_enomupdater_enomprices')->insert([
                 'extension' => $domain->extension,
                 'type' => $type
             ]);
 
             foreach ($years as $year => $price) {
-                Capsule::table('mod_enomupdater_prices')
+                Capsule::table('mod_enomupdater_enomprices')
                     ->where('extension', $domain->extension)
                     ->where('type', $type)
                     ->update([$GLOBALS['numberNames'][$year] => $price]);
@@ -916,15 +1030,17 @@ function enomPricingUpdater_getEnomPrice($settings, $username, $apiKey, $getResu
  */
 function enomPricingUpdater_checkSales()
 {
+    //TODO: Reset all entries in tbldomainpricing to their original group from mod_enomupdater_extensions before applying sale labels
+    //      To ensure nothing is incorrectly marked as sale.
     try {
-        $expired = Capsule::table('mod_enomupdater_extensions')
-            ->where('saleEnd', '<', Capsule::RAW('CURRENT_TIMESTAMP'))->lists('extension');
+        $expired = Capsule::table('mod_enomupdater_sales')->where('expires', '<', Capsule::RAW('CURRENT_TIMESTAMP'))->lists('extension');
+        $domains = Capsule::table('mod_enomupdater_extensions')->whereIn('extension', $expired)->get();
 
-        Capsule::table('tbldomainpricing')->whereIn('extension', $expired)->update(['group' => 'none']);
+        foreach ($domains as $domain) {
+            Capsule::table('tbldomainpricing')->where('extension', $domain->extension)->update(['group', $domain->group]);
+        }
 
-        Capsule::table('mod_enomupdater_extensions')->whereIn('extension', $expired)
-            ->update(['salePrice' => null, 'saleEnd' => null, 'sale' => false]);
-
+        Capsule::table('mod_enomupdater_sales')->where('expires', '<', Capsule::RAW('CURRENT_TIMESTAMP'))->delete();
 
         $logData = [
             'expired' => $expired

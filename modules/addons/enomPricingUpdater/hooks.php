@@ -26,14 +26,6 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 
 //DailyCronJob
 
-// Debug hook
-add_hook('DailyCronJob', 5, function () {
-    $cronEnabled = (Capsule::table('tbladdonmodules')->where('module', 'enomPricingUpdater')->where('setting', 'cron')->first()->value == 'on');
-    if(!$cronEnabled) return;
-
-    logModuleCall('eNom pricing updater', 'Cron ran', 'Hello, world!', '', '', '');
-});
-
 add_hook('DailyCronJob', 6, function () {
     $cronEnabled = (Capsule::table('tbladdonmodules')->where('module', 'enomPricingUpdater')->where('setting', 'cron')->first()->value == 'on');
     if(!$cronEnabled) return;
@@ -61,10 +53,10 @@ add_hook('DailyCronJob', 8, function () {
     $cronEnabled = (Capsule::table('tbladdonmodules')->where('module', 'enomPricingUpdater')->where('setting', 'cron')->first()->value == 'on');
     if(!$cronEnabled) return;
 
-    if(!function_exists("enomPricingUpdater_updateSales")) {
+    if(!function_exists("enomPricingUpdater_applySales")) {
         require_once(__DIR__ . '/enomPricingUpdater.php');
     }
 
-    enomPricingUpdater_updateSales();
+    enomPricingUpdater_applySales();
 });
 
