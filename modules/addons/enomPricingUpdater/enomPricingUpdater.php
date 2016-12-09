@@ -401,8 +401,6 @@ function enomPricingUpdater_output($vars)
 EOL;
         }
 
-        echo "<script src='$addon_dir/functions.js' type='text/javascript'></script>";
-
         echo /** @lang HTML */
         <<<EOL
 <style>

@@ -6,7 +6,7 @@
   "license": "GPL-3.0+",
   "homepage": "https://github.com/ducohosting/whmcs-enom-updater",
   "archive": {
-    "exclude": [".idea", "vendor", "*.json", "*.phar", "*.lock", ".git", ".gitignore", "*.zip", "*.tar", "includes"]
+    "exclude": [".idea", "vendor", "*.json", "*.phar", "*.lock", ".git", ".gitignore", "*.zip", "*.tar", "includes", ".github"]
   },
   "authors": [
     {
