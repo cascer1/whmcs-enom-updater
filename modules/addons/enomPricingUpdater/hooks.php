@@ -30,11 +30,11 @@ add_hook('DailyCronJob', 6, function () {
     $cronEnabled = (Capsule::table('tbladdonmodules')->where('module', 'enomPricingUpdater')->where('setting', 'cron')->first()->value == 'on');
     if(!$cronEnabled) return;
 
-    if(!function_exists("enomPricingUpdater_checkSales")) {
+    if(!function_exists("enomPricingUpdater_checkPromos")) {
         require_once(__DIR__ . '/enomPricingUpdater.php');
     }
 
-    enomPricingUpdater_checkSales();
+    enomPricingUpdater_checkPromos();
 });
 
 
@@ -53,10 +53,10 @@ add_hook('DailyCronJob', 8, function () {
     $cronEnabled = (Capsule::table('tbladdonmodules')->where('module', 'enomPricingUpdater')->where('setting', 'cron')->first()->value == 'on');
     if(!$cronEnabled) return;
 
-    if(!function_exists("enomPricingUpdater_applySales")) {
+    if(!function_exists("enomPricingUpdater_applyPromos")) {
         require_once(__DIR__ . '/enomPricingUpdater.php');
     }
 
-    enomPricingUpdater_applySales();
+    enomPricingUpdater_applyPromos();
 });
 
