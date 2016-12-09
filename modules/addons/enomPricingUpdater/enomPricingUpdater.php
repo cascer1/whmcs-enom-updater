@@ -119,6 +119,11 @@ function enomPricingUpdater_config()
                 "Description" => "When Update eNom prices is set to weekly, the update will be performed on this weekday",
                 "Default" => "Sunday"
             ],
+            "checkBeta" => [
+                "FriendlyName" => "Check for beta releases",
+                "Type" => "yesno",
+                "Description" => "When using the update checker to check for new versions, also consider pre-release versions"
+            ],
             "testmode" => [
                 "FriendlyName" => "Test Mode",
                 "Type" => "yesno",
@@ -360,7 +365,7 @@ function enomPricingUpdater_output($vars)
         // Get list of configured domains
         $domains = Capsule::table('mod_enomupdater_extensions')->orderBy('extension', 'asc')->get();
         $promos = Capsule::table('mod_enomupdater_promos')->orderBy('extension', 'asc')->get();
-        $addon_dir = substr(__DIR__, strlen($_SERVER['DOCUMENT_ROOT']));
+        $version = enomPricingUpdater_getSetting('version');
         $domainOptions = "";
         $promoRows = "";
 
@@ -470,7 +475,8 @@ EOL;
         
                 <form method='post'>
                     <input type='hidden' name='enomAction' value='checkUpdates' />
-                    <button type='submit' class='btn btn-info'>Check for updates</button>
+                    <button type='submit' class='btn btn-info'>Check for updates</button><br>
+                    You are currently running version $version
                 </form>
             </div>
         </div>
@@ -653,7 +659,7 @@ function enomPricingUpdater_deletePromo($post)
 
     // Reset domain to old group in WHMCS
     $promoCount = Capsule::table('mod_enomupdater_promos')->where('extension', $domain)->count();
-    if($promoCount == 0) Capsule::table('tbldomainpricing')->where('extension', $domain)->update(['group' => $oldGroup]);
+    if ($promoCount == 0) Capsule::table('tbldomainpricing')->where('extension', $domain)->update(['group' => $oldGroup]);
 
     logModuleCall('enom pricing updater', 'delete promotion', print_r($post, true), '', '', []);
 }
@@ -1243,7 +1249,7 @@ function enomPricingUpdater_checkPromos()
     try {
         $expired = Capsule::table('mod_enomupdater_promos')->where('expires', '<', Capsule::RAW('CURRENT_TIMESTAMP'))->get();
 
-        foreach($expired as $domain) {
+        foreach ($expired as $domain) {
             $arr = ['domain' => $domain->extension, 'type' => $domain->type, 'years' => $domain->years];
             enomPricingUpdater_deletePromo($arr);
         }
@@ -1252,7 +1258,7 @@ function enomPricingUpdater_checkPromos()
             'expired' => $expired
         ];
 
-        if(count($expired) > 0) logModuleCall('eNom pricing updater', 'checkPromos', '', print_r($logData, true), '', []);
+        if (count($expired) > 0) logModuleCall('eNom pricing updater', 'checkPromos', '', print_r($logData, true), '', []);
     } catch (Exception $ex) {
         logModuleCall('eNom pricing updater', 'checkPromos Error', '', $ex->getMessage(), '', []);
     }
@@ -1265,17 +1271,26 @@ function enomPricingUpdater_checkPromos()
  */
 function enomPricingUpdater_checkUpdates()
 {
+    $checkBeta = (enomPricingUpdater_getSetting('checkBeta') == 'on');
+
+    $url = $checkBeta
+        ? 'https://api.github.com/repos/ducohosting/whmcs-enom-updater/releases'
+        : 'https://api.github.com/repos/ducohosting/whmcs-enom-updater/releases/latest';
+
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://api.github.com/repos/ducohosting/whmcs-enom-updater/releases/latest');
+    curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_USERAGENT, 'WHMCS eNom pricing update module by Duco Hosting');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     $response = json_decode(curl_exec($ch));
     curl_close($ch);
 
+    if($checkBeta) {
+        $response = $response[0];
+    }
     $latestVersion = ltrim($response->tag_name, 'v');
-    $currentVersion = Capsule::table('tbladdonmodules')->where([['module', 'enomPricingUpdater'], ['setting', 'version']])->first()->value;
+    $currentVersion = enomPricingUpdater_getSetting('version');
 
-    logModuleCall('eNom pricing updater', 'Update check', $currentVersion, print_r($response, true), '', '');
+    logModuleCall('eNom pricing updater', 'Update check', $currentVersion, print_r($response, true), '', []);
 
     // first > last --> 1
     // first = last --> 0
@@ -1291,4 +1306,21 @@ function enomPricingUpdater_checkUpdates()
     } else {
         echo "<strong>You are running the latest version</strong><br>";
     }
+}
+
+/**
+ * Get a list of all module settings
+ * @return array|static[] settings
+ */
+function enomPricingUpdater_getSettings() {
+    return Capsule::table('tbladdonmodules')->where('module', 'enomPricingUpdater')->get();
+}
+
+/**
+ * Get a specific module setting
+ * @param $setting string setting name
+ * @return string setting value
+ */
+function enomPricingUpdater_getSetting($setting) {
+    return Capsule::table('tbladdonmodules')->where('module', 'enomPricingUpdater')->where('setting', $setting)->first()->value;
 }
