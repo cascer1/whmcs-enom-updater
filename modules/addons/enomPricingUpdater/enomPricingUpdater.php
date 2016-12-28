@@ -234,71 +234,14 @@ function enomPricingUpdater_upgrade($vars)
     $version = $vars['version'];
 
     // Update to version 1.1.0-beta2, adding eNom wholesale prices to database
-    if (version_compare($version, '1.1.0-beta2') == -1) {
-        Capsule::schema()->create('mod_enomupdater_enomprices', function (Illuminate\Database\Schema\Blueprint $table) {
-            // https://laravel.com/docs/4.2/schema
-            $table->renameColumn('salePrice', 'regPrice');
-            $table->dropColumn('processed');
-            $table->decimal('traPrice', 5, 2)->nullable();
-        });
-    }
-
-    // Add support for transfer sales
-    if (version_compare($version, '1.1.0-beta4') == -1) {
-        Capsule::schema()->rename('mod_enomupdater_prices', 'mod_enomupdater_enomprices');
-
-        Capsule::schema()->table('mod_enomupdater_extensions', function (Illuminate\Database\Schema\Blueprint $table) {
-            $table->dropColumn('sale');
-            $table->dropColumn('salePrice');
-            $table->dropColumn('saleEnd');
-            $table->dropColumn('processed');
-            $table->string('group')->default('none');
-            $table->primary(['extension']);
-        });
-
-        Capsule::schema()->create('mod_enomupdater_prices', function (Illuminate\Database\Schema\Blueprint $table) {
-            // https://laravel.com/docs/4.2/schema
-            $table->integer('relid')->references('id')->on('tbldomainpricing')->onDelete('cascade')->unique();
-            $table->integer('currency')->references('id')->on('tblcurrencies')->onDelete('cascade');
-            $table->enum('type', ['domainregister', 'domainrenew', 'domaintransfer']);
-            $table->decimal('msetupfee', 10, 2)->nullable();
-            $table->decimal('qsetupfee', 10, 2)->nullable();
-            $table->decimal('ssetupfee', 10, 2)->nullable();
-            $table->decimal('asetupfee', 10, 2)->nullable();
-            $table->decimal('bsetupfee', 10, 2)->nullable();
-            $table->decimal('monthly', 10, 2)->nullable();
-            $table->decimal('quarterly', 10, 2)->nullable();
-            $table->decimal('semiannually', 10, 2)->nullable();
-            $table->decimal('annually', 10, 2)->nullable();
-            $table->decimal('biennially', 10, 2)->nullable();
-        });
-
-        Capsule::schema()->create('mod_enomupdater_promos', function (Illuminate\Database\Schema\Blueprint $table) {
-            $table->string('extension')->references('extension')->on('tbldomainpricing')->onDelete('cascade');
-            $table->enum('type', ['domainregister', 'domainrenew', 'domaintransfer']);
-            $table->smallInteger('years');
-            $table->decimal('price', 10, 2);
-            $table->date('expires');
-            $table->primary(['extension', 'type', 'years']);
-        });
-    }
-
-    if (version_compare($version, '1.1.0-beta5') == -1) {
-        Capsule::schema()->rename('mod_enomupdater_sales', 'mod_enomupdater_promos');
-    }
-
-    if (version_compare($version, '1.1.0-beta6') == -1) {
-        Capsule::schema()->table('mod_enomupdater_prices', function (Illuminate\Database\Schema\Blueprint $table) {
-            $table->dropUnique('mod_enomupdater_prices_relid_unique');
-            $table->primary(['relid', 'currency', 'type']);
-        });
-    }
-
-    if (version_compare($version, '1.1.0-beta7') == -1) {
-        Capsule::schema()->table('mod_enomupdater_promos', function (Illuminate\Database\Schema\Blueprint $table) {
-            $table->integer('relid')->references('id')->on('tbldomainpricing')->onDelete('cascade');
-        });
-    }
+//    if (version_compare($version, '1.1.0-beta2') == -1) {
+//        Capsule::schema()->create('mod_enomupdater_enomprices', function (Illuminate\Database\Schema\Blueprint $table) {
+//            // https://laravel.com/docs/4.2/schema
+//            $table->renameColumn('salePrice', 'regPrice');
+//            $table->dropColumn('processed');
+//            $table->decimal('traPrice', 5, 2)->nullable();
+//        });
+//    }
 }
 
 /**

@@ -4,6 +4,13 @@
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/release" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/composer" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/doctrine/annotations" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/doctrine/cache" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/doctrine/collections" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/doctrine/common" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/doctrine/dbal" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/doctrine/inflector" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/doctrine/lexer" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/illuminate/cache" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/illuminate/container" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/illuminate/database" />
@@ -44,6 +51,13 @@
       <library name="PHP" type="php">
         <CLASSES>
           <root url="file://$MODULE_DIR$/vendor/composer" />
+          <root url="file://$MODULE_DIR$/vendor/doctrine/annotations" />
+          <root url="file://$MODULE_DIR$/vendor/doctrine/cache" />
+          <root url="file://$MODULE_DIR$/vendor/doctrine/collections" />
+          <root url="file://$MODULE_DIR$/vendor/doctrine/common" />
+          <root url="file://$MODULE_DIR$/vendor/doctrine/dbal" />
+          <root url="file://$MODULE_DIR$/vendor/doctrine/inflector" />
+          <root url="file://$MODULE_DIR$/vendor/doctrine/lexer" />
           <root url="file://$MODULE_DIR$/vendor/illuminate/cache" />
           <root url="file://$MODULE_DIR$/vendor/illuminate/container" />
           <root url="file://$MODULE_DIR$/vendor/illuminate/database" />
@@ -60,6 +74,13 @@
         </CLASSES>
         <SOURCES>
           <root url="file://$MODULE_DIR$/vendor/composer" />
+          <root url="file://$MODULE_DIR$/vendor/doctrine/annotations" />
+          <root url="file://$MODULE_DIR$/vendor/doctrine/cache" />
+          <root url="file://$MODULE_DIR$/vendor/doctrine/collections" />
+          <root url="file://$MODULE_DIR$/vendor/doctrine/common" />
+          <root url="file://$MODULE_DIR$/vendor/doctrine/dbal" />
+          <root url="file://$MODULE_DIR$/vendor/doctrine/inflector" />
+          <root url="file://$MODULE_DIR$/vendor/doctrine/lexer" />
           <root url="file://$MODULE_DIR$/vendor/illuminate/cache" />
           <root url="file://$MODULE_DIR$/vendor/illuminate/container" />
           <root url="file://$MODULE_DIR$/vendor/illuminate/database" />
