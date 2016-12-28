@@ -65,7 +65,7 @@ function enomPricingUpdater_config()
     $configarray = [
         "name" => "eNom domain pricing updater",
         "description" => "Automatically update domain pricing based on eNom pricing",
-        "version" => "1.1.0-beta7",
+        "version" => "2.0.0-alpha1",
         "author" => "Duco Hosting",
         "fields" => [
             "username" => [
