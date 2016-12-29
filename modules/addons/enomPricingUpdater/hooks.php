@@ -24,8 +24,7 @@ if (!defined("WHMCS"))
 
 use Illuminate\Database\Capsule\Manager as Capsule;
 
-//DailyCronJob
-
+// Remove expired promos
 add_hook('DailyCronJob', 6, function () {
     $cronEnabled = (Capsule::table('tbladdonmodules')->where('module', 'enomPricingUpdater')->where('setting', 'cron')->first()->value == 'on');
     if(!$cronEnabled) return;
@@ -37,7 +36,7 @@ add_hook('DailyCronJob', 6, function () {
     enomPricingUpdater_checkPromos();
 });
 
-
+// Calculate sale prices
 add_hook('DailyCronJob', 7, function () {
     $cronEnabled = (Capsule::table('tbladdonmodules')->where('module', 'enomPricingUpdater')->where('setting', 'cron')->first()->value == 'on');
     if(!$cronEnabled) return;
@@ -49,6 +48,7 @@ add_hook('DailyCronJob', 7, function () {
     enomPricingUpdater_process(null);
 });
 
+// Apply promo prices
 add_hook('DailyCronJob', 8, function () {
     $cronEnabled = (Capsule::table('tbladdonmodules')->where('module', 'enomPricingUpdater')->where('setting', 'cron')->first()->value == 'on');
     if(!$cronEnabled) return;
