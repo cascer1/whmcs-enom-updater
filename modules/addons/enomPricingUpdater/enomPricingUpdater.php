@@ -250,46 +250,113 @@ function enomPricingUpdater_upgrade($vars)
 }
 
 /**
+ * Perform requested action
+ * @param $post array of post variables
+ */
+function enomPricingUpdater_doAction($post) {
+    if (isset($post['enomAction'])) {
+        switch ($post['enomAction']) {
+            case 'updateAll':
+                enomPricingUpdater_process(null);
+                enomPricingUpdater_applyPromos();
+                break;
+            case 'updateSome':
+                enomPricingUpdater_processSome($post['tlds']);
+                enomPricingUpdater_applyPromos();
+                break;
+            case 'updateDomainList':
+                enomPricingUpdater_updateDomainList();
+                break;
+            case 'addPromo':
+                enomPricingUpdater_addPromo($post);
+                break;
+            case 'deletePromo':
+                enomPricingUpdater_deletePromo($post);
+                break;
+            case 'updatePromos':
+                enomPricingUpdater_applyPromos();
+                break;
+            case 'scheckPromos':
+                enomPricingUpdater_checkPromos();
+                break;
+            case 'checkUpdates':
+                enomPricingUpdater_checkUpdates();
+                break;
+            case 'fetchEnomPrices':
+                enomPricingUpdater_fetchEnomPrices();
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+/**
+ * Get a list of all domains, formatted as HTML <select> options
+ * @return string of HTML <select> options
+ */
+function enomPricingUpdater_getDomainOptions() {
+    $domains = Capsule::table('mod_enomupdater_extensions')->orderBy('extension', 'asc')->get();
+    $domainOptions = "";
+
+    foreach ($domains as $domain) {
+        $domainOptions .= "<option value='{$domain->extension}'>{$domain->extension}</option>";
+    }
+
+    return $domainOptions;
+}
+
+/**
+ * Generate table rows for all active promos
+ * @return string of <tr> entries
+ */
+function enomPricingUpdater_getPromoRows() {
+    $promos = Capsule::table('mod_enomupdater_promos')->orderBy('extension', 'asc')->get();
+    $promoRows = "";
+
+    foreach ($promos as $promo) {
+        switch ($promo->type) {
+            case 'domainregister':
+            default:
+                $type = 'Registrations';
+                break;
+            case 'domainrenew':
+                $type = 'Renewals';
+                break;
+            case 'domaintransfer':
+                $type = 'Transfers';
+                break;
+        }
+        $promoRows .= <<<EOL
+                <tr>
+                    <td>$promo->extension</td>
+                    <td>$type</td>
+                    <td>$promo->years</td>
+                    <td>$promo->price</td>
+                    <td>$promo->expires</td>
+                    <td>
+                        <form method='post' onsubmit="return confirm('Are you sure you want to end this promotion now?\\nYou will need to apply promo prices for this to take effect');">
+                            <input type='hidden' name='enomAction' value='deletePromo'>
+                            <input type='hidden' name='domain' value='$promo->extension'>
+                            <input type='hidden' name='years' value='$promo->years'>
+                            <input type='hidden' name='type' value='$promo->type'>
+                            <button type="submit" class="fabutton" data-toggle="tooltip" data-placement="top" title="Delete"><i class="fa fa-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>            
+EOL;
+    }
+
+    return $promoRows;
+}
+
+/**
  * @param $vars
  */
 function enomPricingUpdater_output($vars)
 {
     try {
-        if (isset($_POST['enomAction'])) {
-            switch ($_POST['enomAction']) {
-                case 'updateAll':
-                    enomPricingUpdater_process(null);
-                    enomPricingUpdater_applyPromos();
-                    break;
-                case 'updateSome':
-                    enomPricingUpdater_processSome($_POST['tlds']);
-                    enomPricingUpdater_applyPromos();
-                    break;
-                case 'updateDomainList':
-                    enomPricingUpdater_updateDomainList();
-                    break;
-                case 'addPromo':
-                    enomPricingUpdater_addPromo($_POST);
-                    break;
-                case 'deletePromo':
-                    enomPricingUpdater_deletePromo($_POST);
-                    break;
-                case 'updatePromos':
-                    enomPricingUpdater_applyPromos();
-                    break;
-                case 'scheckPromos':
-                    enomPricingUpdater_checkPromos();
-                    break;
-                case 'checkUpdates':
-                    enomPricingUpdater_checkUpdates();
-                    break;
-                case 'fetchEnomPrices':
-                    enomPricingUpdater_fetchEnomPrices();
-                    break;
-                default:
-                    break;
-            }
-        }
+        enomPricingUpdater_doAction($_POST);
     } catch (Exception $ex) {
 
         $hiddenData = [substr($vars['apikey'], 10), substr($vars['username'], 5)];
@@ -310,48 +377,9 @@ function enomPricingUpdater_output($vars)
          * Get current sales form mod_enomupdater_promos
          */
         // Get list of configured domains
-        $domains = Capsule::table('mod_enomupdater_extensions')->orderBy('extension', 'asc')->get();
-        $promos = Capsule::table('mod_enomupdater_promos')->orderBy('extension', 'asc')->get();
         $version = enomPricingUpdater_getSetting('version');
-        $domainOptions = "";
-        $promoRows = "";
-
-        foreach ($domains as $domain) {
-            $domainOptions .= "<option value='{$domain->extension}'>{$domain->extension}</option>";
-        }
-
-        foreach ($promos as $promo) {
-            switch ($promo->type) {
-                case 'domainregister':
-                default:
-                    $type = 'Registrations';
-                    break;
-                case 'domainrenew':
-                    $type = 'Renewals';
-                    break;
-                case 'domaintransfer':
-                    $type = 'Transfers';
-                    break;
-            }
-            $promoRows .= <<<EOL
-                <tr>
-                    <td>$promo->extension</td>
-                    <td>$type</td>
-                    <td>$promo->years</td>
-                    <td>$promo->price</td>
-                    <td>$promo->expires</td>
-                    <td>
-                        <form method='post' onsubmit="return confirm('Are you sure you want to end this promotion now?\\nYou will need to apply promo prices for this to take effect');">
-                            <input type='hidden' name='enomAction' value='deletePromo'>
-                            <input type='hidden' name='domain' value='$promo->extension'>
-                            <input type='hidden' name='years' value='$promo->years'>
-                            <input type='hidden' name='type' value='$promo->type'>
-                            <button type="submit" class="fabutton" data-toggle="tooltip" data-placement="top" title="Delete"><i class="fa fa-trash"></i></button>
-                        </form>
-                    </td>
-                </tr>            
-EOL;
-        }
+        $domainOptions = enomPricingUpdater_getDomainOptions();
+        $promoRows = enomPricingUpdater_getPromoRows();
 
         echo /** @lang HTML */
         <<<EOL
@@ -526,8 +554,6 @@ function enomPricingUpdater_addPromo($post)
     $end = $post['datPromoEnd'];
 
     $validTypes = ['domainregister', 'domaintransfer', 'domainrenew'];
-    $today = date("Y-m-d H:i:s");
-    $date = "2010-01-21 00:00:00";
 
     // Check that expiry date is in the future
     if (strtotime($end) < time()) $err = "The promotion must expire in the future";
@@ -543,7 +569,10 @@ function enomPricingUpdater_addPromo($post)
 
 
     $tld = $post['selPromoDomain'];
+
+    // Amount of times this domain exists in the local domain cache
     $domainCount = Capsule::table('mod_enomupdater_extensions')->where('extension', $tld)->count();
+    // Amount of times this domain exists in the WHMCS domains table
     $whmcsDomainCount = Capsule::table('tbldomainpricing')->where('extension', $tld)->count();
 
 
@@ -565,6 +594,7 @@ function enomPricingUpdater_addPromo($post)
                 ->where('years', $years)
                 ->update(['expires' => $end, 'price' => $price]);
         } else {
+            // Create new sale
             Capsule::table('mod_enomupdater_promos')->insert([
                 'extension' => $tld,
                 'type' => $type,
@@ -810,30 +840,30 @@ function enomPricingUpdater_getEnabledModes($domain)
         'domaintransfer' => []
     ];
 
-    $currentRegistrationPrices = Capsule::table('tblpricing')
+    $curRegPrices = Capsule::table('tblpricing')
         ->where('relid', $domain->id)
         ->where('currency', 1)
         ->where('type', 'domainregister')
         ->select('msetupfee', 'qsetupfee', 'ssetupfee', 'asetupfee', 'bsetupfee', 'monthly', 'quarterly', 'semiannually', 'annually', 'biennially')
         ->first();
 
-    $currentRenewalPrices = Capsule::table('tblpricing')
+    $curRenPrices = Capsule::table('tblpricing')
         ->where('relid', $domain->id)
         ->where('currency', 1)
         ->where('type', 'domainrenew')
         ->select('msetupfee', 'qsetupfee', 'ssetupfee', 'asetupfee', 'bsetupfee', 'monthly', 'quarterly', 'semiannually', 'annually', 'biennially')
         ->first();
 
-    $currentTransferPrices = Capsule::table('tblpricing')
+    $curTraPrices = Capsule::table('tblpricing')
         ->where('relid', $domain->id)
         ->where('currency', 1)
         ->where('type', 'domaintransfer')
         ->select('msetupfee', 'qsetupfee', 'ssetupfee', 'asetupfee', 'bsetupfee', 'monthly', 'quarterly', 'semiannually', 'annually', 'biennially')
         ->first();
 
-    $enabledModes['domainregister'] = enomPricingUpdater_getEnabledTerms($currentRegistrationPrices);
-    $enabledModes['domainrenew'] = enomPricingUpdater_getEnabledTerms($currentRenewalPrices);
-    $enabledModes['domaintransfer'] = enomPricingUpdater_getEnabledTerms($currentTransferPrices);
+    $enabledModes['domainregister'] = enomPricingUpdater_getEnabledTerms($curRegPrices);
+    $enabledModes['domainrenew'] = enomPricingUpdater_getEnabledTerms($curRenPrices);
+    $enabledModes['domaintransfer'] = enomPricingUpdater_getEnabledTerms($curTraPrices);
 
     return $enabledModes;
 }
