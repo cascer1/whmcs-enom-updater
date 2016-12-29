@@ -65,7 +65,7 @@ function enomPricingUpdater_config()
     $configarray = [
         "name" => "eNom domain pricing updater",
         "description" => "Automatically update domain pricing based on eNom pricing",
-        "version" => "2.0.0",
+        "version" => "2.1.0-alpha1",
         "author" => "Duco Hosting",
         "fields" => [
             "username" => [
@@ -109,15 +109,20 @@ function enomPricingUpdater_config()
                 "FriendlyName" => "Update eNom prices",
                 "Type" => "dropdown",
                 "Options" => "Daily,Weekly,Monthly,Never",
-                "Description" => "When to automatically update eNom wholesale prices during cron job.",
+                "Description" => "When to automatically update eNom wholesale prices during cron job. (not yet implemented)",
                 "Default" => "Monthly"
             ],
             "priceUpdateDay" => [
                 "FriendlyName" => "eNom price update day",
                 "Type" => "dropdown",
                 "Options" => "Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday",
-                "Description" => "When Update eNom prices is set to weekly, the update will be performed on this weekday",
+                "Description" => "When Update eNom prices is set to weekly, the update will be performed on this weekday. (not yet implemented)",
                 "Default" => "Sunday"
+            ],
+            "onlyEnom" => [
+                "FriendlyName" => "Only update eNom domains",
+                "Type" => "yesno",
+                "Description" => "Only process domains that are set to auto register with eNom"
             ],
             "checkBeta" => [
                 "FriendlyName" => "Check for beta releases",
@@ -294,8 +299,7 @@ function enomPricingUpdater_output($vars)
     }
 
     try {
-        /* TODO: Update this to show a promo creation form and table of existing promos
-         *
+        /*
          * Form should contain fields:
          * numSalePrice - decimal number input (2 decimals)
          * numSaleYears - number input [1 .. 10]
@@ -645,7 +649,13 @@ function enomPricingUpdater_updateDomainList()
 {
     // Add new domains from WHMCS to module table
     $existing = Capsule::table('mod_enomupdater_extensions')->lists('extension');
-    $extensions = Capsule::table('tbldomainpricing')->whereNotIn('extension', $existing)->get();
+
+    $onlyEnom = (enomPricingUpdater_getSetting('onlyEnom') == 'on');
+
+    $extensions = Capsule::table('tbldomainpricing')->whereNotIn('extension', $existing);
+    if($onlyEnom) $extensions = $extensions->where('autoreg', 'enom');
+    $extensions = $extensions->get();
+
     $newGroups = Capsule::table('tbldomainpricing')->where('group', '!=', 'sale')->get();
     $currencies = Capsule::table('tblcurrencies')->get();
 
@@ -681,8 +691,14 @@ function enomPricingUpdater_updateDomainList()
     }
 
     // Remove extensions from table if they are not present in WHMCS
-    $all = Capsule::table('tbldomainpricing')->lists('extension');
-    $allIds = Capsule::table('tbldomainpricing')->lists('id');
+    $all = Capsule::table('tbldomainpricing');
+    if($onlyEnom) $all = $all->where('autoreg', 'enom');
+    $all = $all->lists('extension');
+
+    $allIds = Capsule::table('tbldomainpricing');
+    if($onlyEnom) $allIds = $allIds->where('autoreg', 'enom');
+    $allIds = $allIds->lists('extension');
+
     Capsule::table('mod_enomupdater_extensions')->whereNotIn('extension', $all)->delete();
     Capsule::table('mod_enomupdater_prices')->whereNotIn('relid', $allIds)->delete();
 }
@@ -861,6 +877,8 @@ function enomPricingUpdater_process($extensions)
             ->where([['module', 'enomPricingUpdater'], ['setting', 'rounding']])
             ->first()->value);
 
+    $onlyEnom = (enomPricingUpdater_getSetting('onlyEnom') == 'on');
+
     if (!isset($rounding) || $rounding < 0 || $rounding > 100 || !is_numeric($rounding)) $rounding = 4;
     if (!isset($profit) || !is_numeric($profit)) $profit = 50;
     if (!isset($minPrice) || $minPrice < 0 || !is_numeric($minPrice)) $minPrice = 0.01;
@@ -868,6 +886,8 @@ function enomPricingUpdater_process($extensions)
     // Get available domains from WHMCS
     $domains = Capsule::table('tbldomainpricing');
     if (isset($extensions)) $domains->whereIn('extension', $extensions);
+    if($onlyEnom) $domains = $domains->where('autoreg', 'enom');
+    
     $domains = $domains->get();
 
     $rates = enomPricingUpdater_getRates();
