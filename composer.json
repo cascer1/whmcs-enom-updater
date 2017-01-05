@@ -2,7 +2,7 @@
   "name": "ducohosting/whmcs-enom-updater",
   "description": "Update WHMCS domain prices based on eNom wholesale fees",
   "minimum-stability": "stable",
-  "version": "2.1.0-alpha1",
+  "version": "2.1.0-alpha2",
   "license": "GPL-3.0+",
   "homepage": "https://github.com/ducohosting/whmcs-enom-updater",
   "archive": {

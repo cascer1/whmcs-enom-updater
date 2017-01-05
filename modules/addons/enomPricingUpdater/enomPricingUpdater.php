@@ -65,7 +65,7 @@ function enomPricingUpdater_config()
     $configarray = [
         "name" => "eNom domain pricing updater",
         "description" => "Automatically update domain pricing based on eNom pricing",
-        "version" => "2.1.0-alpha1",
+        "version" => "2.1.0-alpha2",
         "author" => "Duco Hosting",
         "fields" => [
             "username" => [
@@ -153,6 +153,7 @@ function enomPricingUpdater_activate()
         // Store regular prices without sales
         Capsule::schema()->create('mod_enomupdater_prices', function (Illuminate\Database\Schema\Blueprint $table) {
             // https://laravel.com/docs/4.2/schema
+            $table->engine = 'InnoDB';
             $table->integer('relid')->references('id')->on('tbldomainpricing')->onDelete('cascade');
             $table->integer('currency')->references('id')->on('tblcurrencies')->onDelete('cascade');
             $table->enum('type', ['domainregister', 'domainrenew', 'domaintransfer']);
@@ -169,10 +170,18 @@ function enomPricingUpdater_activate()
             $table->primary(['relid', 'currency', 'type']);
         });
 
+        Capsule::schema()->create('mod_enomupdater_extensions', function (Illuminate\Database\Schema\Blueprint $table) {
+            $table->engine = 'InnoDB';
+            $table->text('extension')->references('extension')->on('tbldomainpricing')->onDelete('cascade');
+            $table->string('group')->default('none');
+            $table->primary(['extension(32)']);
+        });
+
         // Store eNom wholesale prices
         Capsule::schema()->create('mod_enomupdater_enomprices', function (Illuminate\Database\Schema\Blueprint $table) {
             // https://laravel.com/docs/4.2/schema
-            $table->string('extension')->references('extension')->on('tbldomainpricing')->onDelete('cascade');
+            $table->engine = 'InnoDB';
+            $table->text('extension')->references('extension')->on('mod_enomupdater_extensions')->onDelete('cascade');
             $table->enum('type', ['domainregister', 'domainrenew', 'domaintransfer']);
             $table->decimal('one', 10, 2)->nullable();
             $table->decimal('two', 10, 2)->nullable();
@@ -184,31 +193,26 @@ function enomPricingUpdater_activate()
             $table->decimal('eight', 10, 2)->nullable();
             $table->decimal('nine', 10, 2)->nullable();
             $table->decimal('ten', 10, 2)->nullable();
-            $table->primary(['extension', 'type']);
+            $table->primary(['extension(32)', 'type']);
         });
 
         Capsule::schema()->create('mod_enomupdater_promos', function (Illuminate\Database\Schema\Blueprint $table) {
-            $table->string('extension')->references('extension')->on('tbldomainpricing')->onDelete('cascade');
+            $table->engine = 'InnoDB';
+            $table->text('extension')->references('extension')->on('mod_enomupdater_extensions')->onDelete('cascade');
             $table->integer('relid')->references('id')->on('tbldomainpricing')->onDelete('cascade');
             $table->enum('type', ['domainregister', 'domainrenew', 'domaintransfer']);
             $table->smallInteger('years');
             $table->decimal('price', 10, 2);
             $table->date('expires');
-            $table->primary(['extension', 'type', 'years']);
-        });
-
-        Capsule::schema()->create('mod_enomupdater_extensions', function (Illuminate\Database\Schema\Blueprint $table) {
-            $table->string('extension')->references('extension')->on('tbldomainpricing')->onDelete('cascade');
-            $table->string('group')->default('none');
-            $table->primary(['extension']);
+            $table->primary(['extension(32)', 'type', 'years']);
         });
 
         return ['status' => 'success', 'description' => 'The module has been activated'];
     } catch (Exception $e) {
         Capsule::schema()->dropIfExists('mod_enomupdater_prices');
+        Capsule::schema()->dropIfExists('mod_enomupdater_extensions');
         Capsule::schema()->dropIfExists('mod_enomupdater_enomprices');
         Capsule::schema()->dropIfExists('mod_enomupdater_promos');
-        Capsule::schema()->dropIfExists('mod_enomupdater_extensions');
         return ['status' => 'error', 'description' => $e->getMessage()];
     }
 }
@@ -247,6 +251,52 @@ function enomPricingUpdater_upgrade($vars)
 //            $table->decimal('traPrice', 5, 2)->nullable();
 //        });
 //    }
+
+    if(version_compare($version, '2.1.0-alpha2') == -1) {
+        // local pricing cache and promos should reference internal domain list
+        // So that they are removed when a domain is removed from the internal domain list
+
+        Capsule::statement('ALTER TABLE mod_enomupdater_extensions ENGINE = InnoDB');
+        Capsule::statement('ALTER TABLE mod_enomupdater_enomprices ENGINE = InnoDB');
+        Capsule::statement('ALTER TABLE mod_enomupdater_promos ENGINE = InnoDB');
+
+        // Change column types to text so that they can refer the tbldomainpricing table.
+        // Hardcoded like this until doctrine/dbal is added to WHMCS
+        // See feature request https://requests.whmcs.com/topic/include-doctrinedbal-in-vendor-libraries/
+
+        // Change primary key to first 32 characters of extension column
+        Capsule::schema()->table('mod_enomupdater_extensions', function(Illuminate\Database\Schema\Blueprint $table) {
+            $table->dropPrimary('mod_enomupdater_extensions_extension_primary');
+        });
+
+        Capsule::schema()->table('mod_enomupdater_enomprices', function (Illuminate\Database\Schema\Blueprint $table) {
+            $table->dropPrimary('mod_enomupdater_enomprices_extension_primary');
+        });
+
+        Capsule::schema()->table('mod_enomupdater_promos', function (Illuminate\Database\Schema\Blueprint $table) {
+            $table->dropPrimary('mod_enomupdater_promos_extension_primary');
+        });
+
+        Capsule::statement('ALTER TABLE mod_enomupdater_extensions ADD CONSTRAINT mod_enomupdater_extensions_extension_primary PRIMARY KEY (extension(32))');
+        Capsule::statement('ALTER TABLE mod_enomupdater_enomprices ADD CONSTRAINT mod_enomupdater_enomprices_extension_primary PRIMARY KEY (extension(32), type)');
+        Capsule::statement('ALTER TABLE mod_enomupdater_promos ADD CONSTRAINT mod_enomupdater_promos_extension_primary PRIMARY KEY (extension(32), type, years)');
+
+        Capsule::statement('ALTER TABLE mod_enomupdater_extensions MODIFY COLUMN extension text');
+        Capsule::statement('ALTER TABLE mod_enomupdater_enomprices MODIFY COLUMN extension text');
+        Capsule::statement('ALTER TABLE mod_enomupdater_promos MODIFY COLUMN extension text');
+
+        Capsule::schema()->table('mod_enomupdater_extensions', function(Illuminate\Database\Schema\Blueprint $table) {
+            $table->foreign('extension(32)')->references('extension(32)')->on('tbldomainpricing')->onDelete('cascade');
+        });
+
+        Capsule::schema()->table('mod_enomupdater_enomprices', function (Illuminate\Database\Schema\Blueprint $table) {
+            $table->foreign('extension(32)')->references('extension(32)')->on('mod_enomupdater_extensions')->onDelete('cascade');
+        });
+
+        Capsule::schema()->table('mod_enomupdater_promos', function (Illuminate\Database\Schema\Blueprint $table) {
+            $table->foreign('extension(32)')->references('extension(32)')->on('mod_enomupdater_extensions')->onDelete('cascade');
+        });
+    }
 }
 
 /**
@@ -912,6 +962,9 @@ function enomPricingUpdater_process($extensions)
     if (!isset($rounding) || $rounding < 0 || $rounding > 100 || !is_numeric($rounding)) $rounding = 4;
     if (!isset($profit) || !is_numeric($profit)) $profit = 50;
     if (!isset($minPrice) || $minPrice < 0 || !is_numeric($minPrice)) $minPrice = 0.01;
+
+    // Update the internal domain list before fetching prices.
+    enomPricingUpdater_updateDomainList();
 
     // Get available domains from WHMCS
     $domains = Capsule::table('tbldomainpricing');
