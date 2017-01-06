@@ -104,8 +104,8 @@ Capsule::schema()->rename('mod_enomupdater_extensions_new', 'mod_enomupdater_ext
 try {
     Capsule::schema()->create('mod_enomupdater_prices_new', function (Illuminate\Database\Schema\Blueprint $table) {
         $table->engine = 'InnoDB';
-        $table->integer('relid', 10)->unsigned();
-        $table->integer('currency', 10)->unsigned();
+        $table->integer('relid', 10);
+        $table->integer('currency', 10);
         $table->enum('type', ['domainregister', 'domainrenew', 'domaintransfer']);
         $table->decimal('msetupfee', 10, 2)->nullable();
         $table->decimal('qsetupfee', 10, 2)->nullable();
