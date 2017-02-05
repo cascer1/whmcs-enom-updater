@@ -18,7 +18,13 @@
  *        along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
+if (!defined("WHMCS"))
+    die("This file cannot be accessed directly");
+
 use Illuminate\Database\Capsule\Manager as Capsule;
+
+require_once("../vendor/autoload.php");
 
 /**
  * UPGRADE TO 2.1.0 ALPHA 2
@@ -36,17 +42,14 @@ Capsule::schema()->dropIfExists('mod_enomupdater_promos_new');
 Capsule::schema()->dropIfExists('mod_enomupdater_extensions_new');
 
 // STEP 1: Create temporary table for extensions
-
-
-
 try {
     Capsule::schema()->create('mod_enomupdater_extensions_new', function (Illuminate\Database\Schema\Blueprint $table) {
         $table->engine = 'InnoDB';
-        $table->integer('relid', 10);
-        $table->string('extension')->unique();
+        $table->integer('relid', 10)->references('id')->on('tbldomainpricing')->onDelete('cascade');
+        $table->string('extension');//->unique();
         $table->string('group')->default('none');
 //        $table->primary(['relid']);
-        $table->foreign('relid')->references('id')->on('tbldomainpricing')->onDelete('cascade');
+//        $table->foreign('relid')->references('id')->on('tbldomainpricing')->onDelete('cascade');
     });
 } catch (\Illuminate\Database\QueryException $ex) {
     Capsule::schema()->dropIfExists('mod_enomupdater_extensions_new');
@@ -104,8 +107,8 @@ Capsule::schema()->rename('mod_enomupdater_extensions_new', 'mod_enomupdater_ext
 try {
     Capsule::schema()->create('mod_enomupdater_prices_new', function (Illuminate\Database\Schema\Blueprint $table) {
         $table->engine = 'InnoDB';
-        $table->integer('relid', 10);
-        $table->integer('currency', 10);
+        $table->integer('relid', 10)->references('relid')->on('mod_enomupdater_extensions')->onDelete('cascade');
+        $table->integer('currency', 10)->references('id')->on('tblcurrencies')->onDelete('cascade');
         $table->enum('type', ['domainregister', 'domainrenew', 'domaintransfer']);
         $table->decimal('msetupfee', 10, 2)->nullable();
         $table->decimal('qsetupfee', 10, 2)->nullable();
@@ -117,9 +120,9 @@ try {
         $table->decimal('semiannually', 10, 2)->nullable();
         $table->decimal('annually', 10, 2)->nullable();
         $table->decimal('biennially', 10, 2)->nullable();
-        $table->foreign('relid')->references('relid')->on('mod_enomupdater_extensions')->onDelete('cascade');
-        $table->foreign('currency')->references('id')->on('tblcurrencies')->onDelete('cascade');
-        $table->unique(['relid', 'currency', 'type']);
+//        $table->foreign('relid')->references('relid')->on('mod_enomupdater_extensions')->onDelete('cascade');
+//        $table->foreign('currency')->references('id')->on('tblcurrencies')->onDelete('cascade');
+//        $table->primary(['relid', 'currency', 'type']);
     });
 
     Capsule::schema()->create('mod_enomupdater_enomprices_new', function (Illuminate\Database\Schema\Blueprint $table) {
@@ -137,7 +140,7 @@ try {
         $table->decimal('nine', 10, 2)->nullable();
         $table->decimal('ten', 10, 2)->nullable();
         $table->foreign('relid')->references('relid')->on('mod_enomupdater_extensions')->onDelete('cascade');
-        $table->unique(['relid', 'type']);
+        $table->primary(['relid', 'type']);
     });
 
     Capsule::schema()->create('mod_enomupdater_promos_new', function (Illuminate\Database\Schema\Blueprint $table) {
