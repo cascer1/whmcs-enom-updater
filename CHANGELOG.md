@@ -2,11 +2,10 @@
 
 == 2.1.0
 
-!!! THIS UPGRADE MODIFIES THE DATABASE STRUCTURE. MAKE SURE TO CREATE A BACKUP BEFORE UPGRADING !!!
-
 * Only update prices for domains set to auto-register with eNom
-* Improve references up to tbldomainpricing to auto-remove entries when a TLD is removed from WHMCS
-* 
+* Ignore percentage sign (%) in profit margin or discount settings
+* Update local domain list before fetching eNom prices
+
 
 == 2.0.0
 

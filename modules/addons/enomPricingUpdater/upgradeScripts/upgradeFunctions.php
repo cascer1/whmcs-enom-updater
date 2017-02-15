@@ -1,4 +1,5 @@
 <?php
+
 /**
  *
  *                  WHMCS eNom price sync addon module
