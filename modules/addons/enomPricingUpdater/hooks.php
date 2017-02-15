@@ -2,7 +2,7 @@
 /**
  *
  *                  WHMCS eNom price sync addon module
- *                   Copyright (C) 2016  Duco Hosting
+ *                   Copyright (C) 2017  Duco Hosting
  *
  *        This program is free software: you can redistribute it and/or modify
  *        it under the terms of the GNU General Public License as published by

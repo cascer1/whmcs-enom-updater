@@ -16,7 +16,7 @@ The manual mode can be executed by visiting the addon page in the WHMCS admin ar
 
 The automatic mode runs after every daily cron job, but before the database backup. This mode only runs if it's enabled in the module settings.
 
-**IMPORTANT:** You MUST have USD configured as one of the currencies in WHMCS, this is used for conversion from eNom prices. The adodn module has not been tested without this currency configured.
+**IMPORTANT:** You MUST have USD configured as one of the currencies in WHMCS, this is used for conversion from eNom prices. The addon module has not been tested without this currency configured.
 
 ## Features
 
@@ -37,7 +37,7 @@ Please read [CONTRIBUTING.md](https://github.com/ducohosting/whmcs-enom-updater/
 ## License
 
 WHMCS eNom price sync addon module  
-Copyright &copy; 2016  Duco Hosting  
+Copyright &copy; 2017  Duco Hosting  
 
 This program is free software: you can redistribute it and/or modify  
 it under the terms of the GNU General Public License as published by  

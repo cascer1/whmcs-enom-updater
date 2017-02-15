@@ -2,7 +2,7 @@
 /**
  *
  *                  WHMCS eNom price sync addon module
- *                   Copyright (C) 2016  Duco Hosting
+ *                   Copyright (C) 2017  Duco Hosting
  *
  *        This program is free software: you can redistribute it and/or modify
  *        it under the terms of the GNU General Public License as published by
@@ -65,7 +65,7 @@ function enomPricingUpdater_config()
     $configarray = [
         "name" => "eNom domain pricing updater",
         "description" => "Automatically update domain pricing based on eNom pricing",
-        "version" => "2.1.0-alpha1",
+        "version" => "2.1.0-alpha2",
         "author" => "Duco Hosting",
         "fields" => [
             "username" => [
@@ -653,7 +653,7 @@ function enomPricingUpdater_updateDomainList()
     $onlyEnom = (enomPricingUpdater_getSetting('onlyEnom') == 'on');
 
     $extensions = Capsule::table('tbldomainpricing')->whereNotIn('extension', $existing);
-    if($onlyEnom) $extensions = $extensions->where('autoreg', 'enom');
+    if ($onlyEnom) $extensions = $extensions->where('autoreg', 'enom');
     $extensions = $extensions->get();
 
     $newGroups = Capsule::table('tbldomainpricing')->where('group', '!=', 'sale')->get();
@@ -692,11 +692,11 @@ function enomPricingUpdater_updateDomainList()
 
     // Remove extensions from table if they are not present in WHMCS
     $all = Capsule::table('tbldomainpricing');
-    if($onlyEnom) $all = $all->where('autoreg', 'enom');
+    if ($onlyEnom) $all = $all->where('autoreg', 'enom');
     $all = $all->lists('extension');
 
     $allIds = Capsule::table('tbldomainpricing');
-    if($onlyEnom) $allIds = $allIds->where('autoreg', 'enom');
+    if ($onlyEnom) $allIds = $allIds->where('autoreg', 'enom');
     $allIds = $allIds->lists('extension');
 
     Capsule::table('mod_enomupdater_extensions')->whereNotIn('extension', $all)->delete();
@@ -783,16 +783,16 @@ function enomPricingUpdater_getEnabledTerms($currentPrices)
     //   if($currentPrices->$name > 0) array_push($returned, $year);
     // }
 
-    if ($currentPrices->msetupfee > 0) array_push($returned, 1);
-    if ($currentPrices->qsetupfee > 0) array_push($returned, 2);
-    if ($currentPrices->ssetupfee > 0) array_push($returned, 3);
-    if ($currentPrices->asetupfee > 0) array_push($returned, 4);
-    if ($currentPrices->bsetupfee > 0) array_push($returned, 5);
-    if ($currentPrices->monthly > 0) array_push($returned, 6);
-    if ($currentPrices->quarterly > 0) array_push($returned, 7);
-    if ($currentPrices->semiannually > 0) array_push($returned, 8);
-    if ($currentPrices->annually > 0) array_push($returned, 9);
-    if ($currentPrices->biennially > 0) array_push($returned, 10);
+    if ($currentPrices->msetupfee >= 0) array_push($returned, 1);
+    if ($currentPrices->qsetupfee >= 0) array_push($returned, 2);
+    if ($currentPrices->ssetupfee >= 0) array_push($returned, 3);
+    if ($currentPrices->asetupfee >= 0) array_push($returned, 4);
+    if ($currentPrices->bsetupfee >= 0) array_push($returned, 5);
+    if ($currentPrices->monthly >= 0) array_push($returned, 6);
+    if ($currentPrices->quarterly >= 0) array_push($returned, 7);
+    if ($currentPrices->semiannually >= 0) array_push($returned, 8);
+    if ($currentPrices->annually >= 0) array_push($returned, 9);
+    if ($currentPrices->biennially >= 0) array_push($returned, 10);
 
     return $returned;
 }
@@ -844,50 +844,35 @@ function enomPricingUpdater_getEnabledModes($domain)
  */
 function enomPricingUpdater_process($extensions)
 {
-    logModuleCall('eNom pricing updater', 'process', print_r($extensions, true), '', '', '');
-    $username = Capsule::table('tbladdonmodules')
-        ->where([['module', 'enomPricingUpdater'], ['setting', 'username']])
-        ->first()->value;
+    logModuleCall('eNom pricing updater', 'process', print_r($extensions, true), '', '', []);
 
-    $apiKey = Capsule::table('tbladdonmodules')
-        ->where([['module', 'enomPricingUpdater'], ['setting', 'apikey']])
-        ->first()->value;
-
-    $testmode = (Capsule::table('tbladdonmodules')
-            ->where([['module', 'enomPricingUpdater'], ['setting', 'testmode']])
-            ->first()->value == 'on');
-
-    $debug = (Capsule::table('tbladdonmodules')
-            ->where([['module', 'enomPricingUpdater'], ['setting', 'debug']])
-            ->first()->value == 'on');
-
-    $profit = Capsule::table('tbladdonmodules')
-        ->where([['module', 'enomPricingUpdater'], ['setting', 'profit']])
-        ->first()->value;
-
-    $discount = Capsule::table('tbladdonmodules')
-        ->where([['module', 'enomPricingUpdater'], ['setting', 'multiDiscount']])
-        ->first()->value;
-
-    $minPrice = Capsule::table('tbladdonmodules')
-        ->where([['module', 'enomPricingUpdater'], ['setting', 'minPrice']])
-        ->first()->value;
-
-    $rounding = 100 / (Capsule::table('tbladdonmodules')
-            ->where([['module', 'enomPricingUpdater'], ['setting', 'rounding']])
-            ->first()->value);
-
+    $username = enomPricingUpdater_getSetting('username');
+    $apiKey = enomPricingUpdater_getSetting('apikey');
+    $testmode = (enomPricingUpdater_getSetting('testmode') == 'on');
+    $debug = (enomPricingUpdater_getSetting('debug') == 'on');
+    $profit = enomPricingUpdater_getSetting('profit');
+    $discount = enomPricingUpdater_getSetting('multiDiscount');
+    $minPrice = enomPricingUpdater_getSetting('minPrice');
+    $rounding = 100 / (enomPricingUpdater_getSetting('rounding'));
     $onlyEnom = (enomPricingUpdater_getSetting('onlyEnom') == 'on');
+
+    // Convert input to numeric
+    $rounding = preg_replace("/[^0-9.]/", "", $rounding);
+    $discount = preg_replace("/[^0-9.]/", "", $discount);
+    $minPrice = preg_replace("/[^0-9.]/", "", $minPrice);
 
     if (!isset($rounding) || $rounding < 0 || $rounding > 100 || !is_numeric($rounding)) $rounding = 4;
     if (!isset($profit) || !is_numeric($profit)) $profit = 50;
     if (!isset($minPrice) || $minPrice < 0 || !is_numeric($minPrice)) $minPrice = 0.01;
 
+    // Update internal domain list
+    enomPricingUpdater_updateDomainList();
+
     // Get available domains from WHMCS
     $domains = Capsule::table('tbldomainpricing');
     if (isset($extensions)) $domains->whereIn('extension', $extensions);
-    if($onlyEnom) $domains = $domains->where('autoreg', 'enom');
-    
+    if ($onlyEnom) $domains = $domains->where('autoreg', 'enom');
+
     $domains = $domains->get();
 
     $rates = enomPricingUpdater_getRates();
@@ -1247,7 +1232,7 @@ function enomPricingUpdater_checkUpdates()
     $response = json_decode(curl_exec($ch));
     curl_close($ch);
 
-    if($checkBeta) {
+    if ($checkBeta) {
         $response = $response[0];
     }
     $latestVersion = ltrim($response->tag_name, 'v');
@@ -1275,7 +1260,8 @@ function enomPricingUpdater_checkUpdates()
  * Get a list of all module settings
  * @return array|static[] settings
  */
-function enomPricingUpdater_getSettings() {
+function enomPricingUpdater_getSettings()
+{
     return Capsule::table('tbladdonmodules')->where('module', 'enomPricingUpdater')->get();
 }
 
@@ -1284,6 +1270,7 @@ function enomPricingUpdater_getSettings() {
  * @param $setting string setting name
  * @return string setting value
  */
-function enomPricingUpdater_getSetting($setting) {
+function enomPricingUpdater_getSetting($setting)
+{
     return Capsule::table('tbladdonmodules')->where('module', 'enomPricingUpdater')->where('setting', $setting)->first()->value;
 }

@@ -2,11 +2,11 @@
   "name": "ducohosting/whmcs-enom-updater",
   "description": "Update WHMCS domain prices based on eNom wholesale fees",
   "minimum-stability": "stable",
-  "version": "2.1.0-alpha1",
+  "version": "2.1.0-alpha2",
   "license": "GPL-3.0+",
   "homepage": "https://github.com/ducohosting/whmcs-enom-updater",
   "archive": {
-    "exclude": [".idea", "vendor", "*.json", "*.phar", "*.lock", ".git", ".gitignore", "*.zip", "*.tar", "includes", ".github", "!vendor/doctrine/dbal", "release"]
+    "exclude": [".idea", "vendor", "*.json", "*.phar", "*.lock", ".git", ".gitignore", "*.zip", "*.tar", "includes", ".github", "release"]
   },
   "authors": [
     {
@@ -15,7 +15,9 @@
     }
   ],
   "require": {
-    "laravel/database": "4.2.0",
     "doctrine/dbal": "2.3.5"
+  },
+  "config": {
+    "vendor-dir": "modules/addons/enomPricingUpdater/vendor"
   }
 }

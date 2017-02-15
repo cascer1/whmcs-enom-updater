@@ -45,3 +45,4 @@ release/
 *.phar
 *.zip
 *.tar
+.idea/
