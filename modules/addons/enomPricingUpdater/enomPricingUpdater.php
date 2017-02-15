@@ -817,16 +817,16 @@ function enomPricingUpdater_getEnabledTerms($currentPrices)
     //   if($currentPrices->$name > 0) array_push($returned, $year);
     // }
 
-    if ($currentPrices->msetupfee > 0) array_push($returned, 1);
-    if ($currentPrices->qsetupfee > 0) array_push($returned, 2);
-    if ($currentPrices->ssetupfee > 0) array_push($returned, 3);
-    if ($currentPrices->asetupfee > 0) array_push($returned, 4);
-    if ($currentPrices->bsetupfee > 0) array_push($returned, 5);
-    if ($currentPrices->monthly > 0) array_push($returned, 6);
-    if ($currentPrices->quarterly > 0) array_push($returned, 7);
-    if ($currentPrices->semiannually > 0) array_push($returned, 8);
-    if ($currentPrices->annually > 0) array_push($returned, 9);
-    if ($currentPrices->biennially > 0) array_push($returned, 10);
+    if ($currentPrices->msetupfee >= 0) array_push($returned, 1);
+    if ($currentPrices->qsetupfee >= 0) array_push($returned, 2);
+    if ($currentPrices->ssetupfee >= 0) array_push($returned, 3);
+    if ($currentPrices->asetupfee >= 0) array_push($returned, 4);
+    if ($currentPrices->bsetupfee >= 0) array_push($returned, 5);
+    if ($currentPrices->monthly >= 0) array_push($returned, 6);
+    if ($currentPrices->quarterly >= 0) array_push($returned, 7);
+    if ($currentPrices->semiannually >= 0) array_push($returned, 8);
+    if ($currentPrices->annually >= 0) array_push($returned, 9);
+    if ($currentPrices->biennially >= 0) array_push($returned, 10);
 
     return $returned;
 }
@@ -878,7 +878,7 @@ function enomPricingUpdater_getEnabledModes($domain)
  */
 function enomPricingUpdater_process($extensions)
 {
-    logModuleCall('eNom pricing updater', 'process', print_r($extensions, true), '', '', '');
+    logModuleCall('eNom pricing updater', 'process', print_r($extensions, true), '', '', []);
     $username = Capsule::table('tbladdonmodules')
         ->where([['module', 'enomPricingUpdater'], ['setting', 'username']])
         ->first()->value;
