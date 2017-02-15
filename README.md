@@ -37,7 +37,7 @@ Please read [CONTRIBUTING.md](https://github.com/ducohosting/whmcs-enom-updater/
 ## License
 
 WHMCS eNom price sync addon module  
-Copyright &copy; 2016  Duco Hosting  
+Copyright &copy; 2017  Duco Hosting  
 
 This program is free software: you can redistribute it and/or modify  
 it under the terms of the GNU General Public License as published by  
