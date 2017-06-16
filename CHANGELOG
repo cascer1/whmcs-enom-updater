@@ -5,6 +5,8 @@
 * Only update prices for domains set to auto-register with eNom
 * Ignore percentage sign (%) in profit margin or discount settings
 * Update local domain list before fetching eNom prices
+* No longer depend on simplexml to download API response
+* Display API errors
 
 
 == 2.0.0
