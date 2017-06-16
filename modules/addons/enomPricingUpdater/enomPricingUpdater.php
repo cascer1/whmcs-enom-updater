@@ -65,7 +65,7 @@ function enomPricingUpdater_config()
     $configarray = [
         "name" => "eNom domain pricing updater",
         "description" => "Automatically update domain pricing based on eNom pricing",
-        "version" => "2.1.0-alpha2",
+        "version" => "2.1.0-alpha3",
         "author" => "Duco Hosting",
         "fields" => [
             "username" => [
@@ -417,13 +417,6 @@ EOL;
                 <form method='post'>
                     <input type='hidden' name='enomAction' value='updateDomainList' />
                     <button type='submit' class='btn btn-info'>Update internal domain list</button> <br>Run this when you add or remove TLDs that you sell.
-                </form>
-                <hr>
-        
-                <form method='post'>
-                    <input type='hidden' name='enomAction' value='checkUpdates' />
-                    <button type='submit' class='btn btn-info'>Check for updates</button><br>
-                    You are currently running version $version
                 </form>
             </div>
         </div>
@@ -1105,6 +1098,8 @@ function enomPricingUpdater_fetchEnomPrices()
         }
     }
 
+    if (enomPricingUpdater_getSetting('debug')) logModuleCall('enomPricingUpdater', 'Fetch prices', print_r($parsed, true), '', '', []);
+
 
     $username = Capsule::table('tbladdonmodules')
         ->where([['module', 'enomPricingUpdater'], ['setting', 'username']])
@@ -1117,6 +1112,8 @@ function enomPricingUpdater_fetchEnomPrices()
     $domains = Capsule::table('tbldomainpricing');
     if (count($parsed) > 0) $domains = $domains->whereIn('extension', $parsed);
     $domains = $domains->get();
+
+    if (enomPricingUpdater_getSetting('debug')) logModuleCall('enomPricingUpdater', 'fetch prices', print_r($domains, true), '', '', []);
 
 
     if (count($parsed) > 0) {
@@ -1137,7 +1134,11 @@ function enomPricingUpdater_fetchEnomPrices()
         $tld = ltrim($domain->extension, '.');
 
         foreach ($GLOBALS['enomModes'] as $mode => $foo) {
-            $generalInfo = enomPricingUpdater_getEnomPrice(['tld' => $tld, 'type' => $foo, 'years' => 1], $username, $apiKey, true);
+            $args = ['tld' => $tld, 'type' => $foo, 'years' => 1];
+            $generalInfo = enomPricingUpdater_getEnomPrice($args, $username, $apiKey, true);
+
+            if (enomPricingUpdater_getSetting('debug')) logModuleCall('enomPricingUpdater', 'fetch eNom price', print_r($args, true), print_r($generalInfo, true), '', []);
+
             $minPeriod = intval($generalInfo->MinPeriod);
             $maxPeriod = intval($generalInfo->MaxPeriod);
 
@@ -1148,6 +1149,7 @@ function enomPricingUpdater_fetchEnomPrices()
                 $result = enomPricingUpdater_getEnomPrice(['tld' => $tld, 'type' => $foo, 'years' => $i], $username, $apiKey, false);
                 $enomPrices[$mode][$i] = $result;
             }
+
         }
 
         foreach ($enomPrices as $type => $years) {
@@ -1182,11 +1184,40 @@ function enomPricingUpdater_getEnomPrice($settings, $username, $apiKey, $getResu
 
     $requestUrl = "$urlBase&tld={$settings['tld']}&ProductType={$settings['type']}&Years={$settings['years']}";
 
-    $requestResult = simplexml_load_file($requestUrl);
+    $requestResult = enomPricingUpdater_performRequest($requestUrl);
+
+    if (!$requestResult) return false;
+
 
     if (!$getResult) return $requestResult->productprice->price;
 
     else return $requestResult;
+}
+
+/**
+ * @param $url String URL to request
+ * @return SimpleXMLElement
+ * @throws Exception on curl error
+ */
+function enomPricingUpdater_performRequest($url)
+{
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_HEADER, true);
+    $xml = curl_exec($ch);
+    $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    if ($xml === false) {
+        throw new Exception(curl_error($ch));
+    }
+
+    if($http_status != 200) {
+        throw new Exception("HTTP status code while fetching prices: $http_status");
+    }
+
+
+    return simplexml_load_string($xml);
 }
 
 /**
@@ -1216,6 +1247,7 @@ function enomPricingUpdater_checkPromos()
  * Check to see if a new version is available on GitHub
  * Only checks for stable releases.
  * Displays a message with download link if new version is found
+ * @deprecated still uses old GitHub repository
  */
 function enomPricingUpdater_checkUpdates()
 {
