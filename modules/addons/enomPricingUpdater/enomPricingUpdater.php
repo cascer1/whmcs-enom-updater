@@ -65,7 +65,7 @@ function enomPricingUpdater_config()
     $configarray = [
         "name" => "eNom domain pricing updater",
         "description" => "Automatically update domain pricing based on eNom pricing",
-        "version" => "2.1.0-alpha3",
+        "version" => "2.1.0-alpha4",
         "author" => "Duco Hosting",
         "fields" => [
             "username" => [
@@ -1184,7 +1184,9 @@ function enomPricingUpdater_getEnomPrice($settings, $username, $apiKey, $getResu
 
     $requestUrl = "$urlBase&tld={$settings['tld']}&ProductType={$settings['type']}&Years={$settings['years']}";
 
-    $requestResult = enomPricingUpdater_performRequest($requestUrl);
+    $requestResult = enomPricingUpdater_performRequest($requestUrl, $apiKey);
+
+    if (enomPricingUpdater_getSetting('debug')) logModuleCall('enomPricingUpdater', 'getEnomPrice_requestResult', $requestUrl, print_r($requestResult, true), '', [$apiKey]);
 
     if (!$requestResult) return false;
 
@@ -1194,25 +1196,56 @@ function enomPricingUpdater_getEnomPrice($settings, $username, $apiKey, $getResu
     else return $requestResult;
 }
 
+
+//<interface-response>
+//    <productprice>
+//        <price>9.45</price>
+//        <productenabled>True</productenabled>
+//    </productprice>
+//    <Command>PE_GETPRODUCTPRICE</Command>
+//    <APIType>API</APIType>
+//    <Language>eng</Language>
+//    <ErrCount>0</ErrCount>
+//    <ResponseCount>0</ResponseCount>
+//    <MinPeriod>1</MinPeriod>
+//    <MaxPeriod>10</MaxPeriod>
+//    <Server>SJL0VWAPI05</Server>
+//    <Site>eNom</Site>
+//    <IsLockable>True</IsLockable>
+//    <IsRealTimeTLD>True</IsRealTimeTLD>
+//    <TimeDifference>+08.00</TimeDifference>
+//    <ExecTime>0.000</ExecTime>
+//    <Done>true</Done>
+//    <TrackingKey>b57a7bd0-7283-44a0-8d47-d801895ffeb8</TrackingKey>
+//    <RequestDateTime>6/16/2017 12:08:27 PM</RequestDateTime>
+//    <debug><![CDATA[]]></debug>
+//</interface-response>
+
+
 /**
  * @param $url String URL to request
+ * @param $apiKey String eNom API key
  * @return SimpleXMLElement
  * @throws Exception on curl error
  */
-function enomPricingUpdater_performRequest($url)
+function enomPricingUpdater_performRequest($url, $apiKey)
 {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_HEADER, true);
+    curl_setopt($ch, CURLOPT_HEADER, false);
+
     $xml = curl_exec($ch);
+
     $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    if (enomPricingUpdater_getSetting('debug')) logModuleCall('enomPricingUpdater', 'cURL: fetch prices', $url, print_r($xml, true), '', [$apiKey]);
 
     if ($xml === false) {
         throw new Exception(curl_error($ch));
     }
 
-    if($http_status != 200) {
+    if ($http_status != 200) {
         throw new Exception("HTTP status code while fetching prices: $http_status");
     }
 
