@@ -731,7 +731,7 @@ function enomPricingUpdater_applyPromos()
 
         $priceDefault = $wholesalePrice / $rates['USD']->rate;
 
-        $salePrice = $priceDefault * (1 + $profit / 100);
+        $salePrice = ($wholesalePrice * (1 + $profit / 100)) / $rates['USD']->rate;
 
 
         foreach ($rates as $rate) {
@@ -1054,8 +1054,7 @@ function enomPricingUpdater_calculateSalePrices($enomPrices, $profit, $discount)
 
     foreach ($enomPrices as $type => $durations) {
         foreach ($durations as $duration => $price) {
-            $returned[$type][$duration] = $price * (1 + $profit / 100 - $discount * ($duration - 1) / 100) * $duration;
-            $returned[$type][$duration] /= $rates['USD'];
+            $returned[$type][$duration] = (($price * (1 + $profit / 100 - $discount * ($duration - 1) / 100))  / $rates['USD']->rate) * $duration;
             if ($price == -1 || $price == null) $returned[$type][$duration] = -1;
         }
     }
