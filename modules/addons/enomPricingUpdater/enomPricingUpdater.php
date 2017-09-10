@@ -260,31 +260,49 @@ function enomPricingUpdater_output($vars)
                 case 'updateAll':
                     enomPricingUpdater_process(null);
                     enomPricingUpdater_applyPromos();
+                    $enomPricingUpdater_actionCompleted = 1;
+                    $enomPricingUpdater_actionMessage = 'Finished applying all TLD pricing';
                     break;
                 case 'updateSome':
                     enomPricingUpdater_processSome($_POST['tlds']);
                     enomPricingUpdater_applyPromos();
+                    $enomPricingUpdater_actionCompleted = 1;
+                    $enomPricingUpdater_actionMessage = 'Finished applying some TLD pricing';
                     break;
                 case 'updateDomainList':
                     enomPricingUpdater_updateDomainList();
+                    $enomPricingUpdater_actionCompleted = 1;
+                    $enomPricingUpdater_actionMessage = 'Finished updating the internal eNom domain list';
                     break;
                 case 'addPromo':
                     enomPricingUpdater_addPromo($_POST);
+                    $enomPricingUpdater_actionCompleted = 1;
+                    $enomPricingUpdater_actionMessage = 'Added promotion successfully';
                     break;
                 case 'deletePromo':
                     enomPricingUpdater_deletePromo($_POST);
+                    $enomPricingUpdater_actionCompleted = 1;
+                    $enomPricingUpdater_actionMessage = 'Deleted promotion successfully';
                     break;
                 case 'updatePromos':
                     enomPricingUpdater_applyPromos();
+                    $enomPricingUpdater_actionCompleted = 1;
+                    $enomPricingUpdater_actionMessage = 'Finished applying domain promotion pricing';
                     break;
                 case 'scheckPromos':
                     enomPricingUpdater_checkPromos();
+                    $enomPricingUpdater_actionCompleted = 1;
+                    $enomPricingUpdater_actionMessage = 'Finished removing expired domain promotions';
                     break;
                 case 'checkUpdates':
                     enomPricingUpdater_checkUpdates();
+                    $enomPricingUpdater_actionCompleted = 1;
+                    $enomPricingUpdater_actionMessage = 'Check for updates completed';
                     break;
                 case 'fetchEnomPrices':
                     enomPricingUpdater_fetchEnomPrices();
+                    $enomPricingUpdater_actionCompleted = 1;
+                    $enomPricingUpdater_actionMessage = 'Finished fetching eNom pricing';
                     break;
                 default:
                     break;
@@ -352,8 +370,15 @@ function enomPricingUpdater_output($vars)
                 </tr>            
 EOL;
         }
+        
+if(isset($enomPricingUpdater_actionCompleted) && $enomPricingUpdater_actionCompleted == 1){
+echo <<<END
+<div class="infobox"><strong><span class="title">Action Completed!</span></strong><br>$enomPricingUpdater_actionMessage</div>
+END;
+}
 
         echo /** @lang HTML */
+        
         <<<EOL
 <style>
     .fabutton {
@@ -362,6 +387,9 @@ EOL;
         border: none;
     }
 </style>
+
+<p>To update your eNom pricing, we first recommend selecting the desired option to fetch eNom prices, then calculating the TLD pricing, using the options below. Please use the Promo Actions section to update your TLD pricing after creating or remove promotions.</p>
+
 <div class='row'>
     <div class='col-md-3 pull-md-left'>
         <div class="panel panel-default">
@@ -381,17 +409,17 @@ EOL;
         </div>
         
         <div class="panel panel-default">
-            <div class="panel-heading">Price Actions</div>
+            <div class="panel-heading">WHMCS TLD Actions</div>
             <div class="panel-body">
                 <form method='post'>
                     <input type='hidden' name='enomAction' value='updateAll' />
-                    <button type='submit' class='btn btn-success'>Calculate all sale prices</button>
+                    <button type='submit' class='btn btn-success'>Calculate all TLD prices</button>
                 </form>
                 <hr>
                 <form method='post'>
                     <input type='hidden' name='enomAction' value='updateSome' />
                     <input type='text' name='tlds' placeholder='.com,.net,.info'/><br>
-                    <button type='submit' class='btn btn-info'>Calculate specific sale prices</button>
+                    <button type='submit' class='btn btn-info'>Calculate specific TLD prices</button>
                 </form>
             </div>
         </div>
