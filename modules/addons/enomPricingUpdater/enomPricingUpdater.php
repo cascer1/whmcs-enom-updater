@@ -69,75 +69,75 @@ function enomPricingUpdater_config()
         "author" => "Duco Hosting",
         "fields" => [
             "username" => [
-                "FriendlyName" => "Account login ID",
+                "FriendlyName" => "eNom Username",
                 "Type" => "text",
                 "Size" => "50",
-                "Description" => "Your eNom account username"
+                "Description" => "Enter your Enom Reseller Account Username here."
             ],
             "apikey" => [
-                "FriendlyName" => "API key",
+                "FriendlyName" => "eNom API Token",
                 "Type" => "password",
                 "Size" => "50",
-                "Description" => "eNom API key. Get one <a href='https://www.enom.com/apitokens/'>here</a>"
+                "Description" => "Don't have an eNom API Token? Get one <a href='https://www.enom.com/apitokens/'>here</a>."
             ],
             "profit" => [
                 "FriendlyName" => "Profit Margin",
                 "Type" => "text",
-                "Description" => "Profit margin in percent (%) to increase wholesale price by. e.g: entering 50 sets the price for a domain to 150% of your cost."
+                "Description" => "Enter the profit margin in percent (%) that you wish to increase wholesale price by when setting domain pricing. For example, entering 50 sets the price for a domain to 150% of your cost. Leave blank to sell domains at cost."
             ],
             "multiDiscount" => [
-                "FriendlyName" => "Multi-year discount",
+                "FriendlyName" => "Multi-year Discount",
                 "Type" => "text",
-                "Description" => "Percentage discount to apply for multi-year registrations and renewals. e.g: entering 5 will decrease the profit margin by 5 percentage points for 2-year transers, 10 percentage points for 3-year transfers, etc."
+                "Description" => "Enter a discount in percent (%) to apply to multi-year registrations and transfers. For example, entering 5 will decrease the profit margin by 5 percent for 2-years, 10 percent for 3-years, 15 percent for 4 years, etc. Leave blank to disable."
             ],
             "rounding" => [
-                "FriendlyName" => "Price rouding",
+                "FriendlyName" => "Price Rounding",
                 "Type" => "text",
-                "Description" => "Amount of cents to round sale prices to. e.g: entering 25 will results in prices like 7.00, 7.25, 7.50 or 7.75."
+                "Description" => "Enter the amount of cents to round sale prices to. e.g: entering 25 will results in prices like 7.00, 7.25, 7.50 or 7.75. Leave blank to disable."
             ],
             "minPrice" => [
-                "FriendlyName" => "Minimal price",
+                "FriendlyName" => "Minimum Price",
                 "Type" => "text",
-                "Description" => "The addon will never price domains lower than this amount, including domains that are on sale"
+                "Description" => "If set, the addon will never price domains lower than this amount in your installation's base currency, including domains that are on sale."
             ],
             "cron" => [
-                "FriendlyName" => "Enable cron mode",
+                "FriendlyName" => "Enable Cron Mode",
                 "Type" => "yesno",
-                "Description" => "Automatically run for all extensions during the daily cron job"
+                "Description" => "If enabled, the addon will automatically fetch and update domain pricing for all configured extensions under Setup > Products/Services > Domain Pricing during the daily cron job."
             ],
             "priceUpdateRate" => [
-                "FriendlyName" => "Update eNom prices",
+                "FriendlyName" => "Update eNom Prices",
                 "Type" => "dropdown",
                 "Options" => "Daily,Weekly,Monthly,Never",
-                "Description" => "When to automatically update eNom wholesale prices during cron job. (not yet implemented)",
+                "Description" => "Select when to automatically update eNom wholesale prices during the daily cron job. (not yet implemented).",
                 "Default" => "Monthly"
             ],
             "priceUpdateDay" => [
-                "FriendlyName" => "eNom price update day",
+                "FriendlyName" => "eNom Pricing Update Day",
                 "Type" => "dropdown",
                 "Options" => "Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday",
-                "Description" => "When Update eNom prices is set to weekly, the update will be performed on this weekday. (not yet implemented)",
+                "Description" => "If 'Update eNom Prices' is set to 'Weekly', the update will be performed on this weekday during the daily cron job. (not yet implemented).",
                 "Default" => "Sunday"
             ],
             "onlyEnom" => [
-                "FriendlyName" => "Only update eNom domains",
+                "FriendlyName" => "Only Update eNom Extensions",
                 "Type" => "yesno",
-                "Description" => "Only process domains that are set to auto register with eNom"
+                "Description" => "If enabled, only process extensions that are set to auto register with eNom when running the pricing update."
             ],
             "checkBeta" => [
-                "FriendlyName" => "Check for beta releases",
+                "FriendlyName" => "Check For Beta Releases",
                 "Type" => "yesno",
-                "Description" => "When using the update checker to check for new versions, also consider pre-release versions"
+                "Description" => "When using the update checker to check for new versions, also consider pre-release versions."
             ],
             "testmode" => [
                 "FriendlyName" => "Test Mode",
                 "Type" => "yesno",
-                "Description" => "Enable test mode, disables database saving"
+                "Description" => "If set, this enables test mode and disables database saving. Only useful for troubleshooting issues and should be disabled otherwise."
             ],
             "debug" => [
                 "FriendlyName" => "Debug Mode",
                 "Type" => "yesno",
-                "Description" => "Enable debug mode, makes the module more verbose. Make sure to enable Module logging to view output."
+                "Description" => "If set, this enables debug mode and makes the addon more verbose. Information will be logged to the WHMCS Module Log, and needs to be enabled there as well. Only useful for troubleshooting issues and should be disabled otherwise."
             ]
         ]
     ];
