@@ -1102,7 +1102,7 @@ function enomPricingUpdater_getStoredPrice($extension, $mode, $years)
     $price = Capsule::table('mod_enomupdater_enomprices')
         ->where('extension', $extension)
         ->where('type', $mode)
-        ->pluck($GLOBALS['numberNames'][$years])[0];
+        ->first()->{$GLOBALS['numberNames'][$years]};
 
     return $price;
 }
