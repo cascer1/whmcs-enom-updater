@@ -1,5 +1,8 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/cc8a6ea7e3c24735827bcaa416c08ac0)](https://www.codacy.com/app/cas-eliens/whmcs-enom-updater?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=ducohosting/whmcs-enom-updater&amp;utm_campaign=Badge_Grade)
 
+## Active Development
+This project is no longer actively developed. Pull requests will be reviewed still. 
+
 # WHMCS eNom price sync
 This module automatically gets your current pricing levels from eNom and updates your WHMCS domain prices accordingly.  
 It supports registration and renewal periods of up to 3 years, but this can be easily extended if required.
